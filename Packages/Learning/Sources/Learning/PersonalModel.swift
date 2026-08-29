@@ -437,6 +437,37 @@ public final class PersonalModel {
         return summary
     }
 
+    // MARK: - Language split (see LearningStore.swift)
+
+    /// Adopt a word's statistics wholesale. Used only when partitioning a
+    /// pre-split model, where the counts are already final.
+    func adoptWord(_ word: String, stats: WordStats) {
+        words[word] = stats
+    }
+
+    func adoptBigram(_ key: String, count: UInt32) {
+        bigrams[key] = count
+    }
+
+    /// Adopt the state that is not language-specific. Tombstones and
+    /// user-added words are deliberate statements about a word, not about a
+    /// keyboard mode, and touch geometry is a property of the user's hand.
+    func adoptShared(
+        tombstones: Set<String>, userAdded: Set<String>, touch: [String: TouchKeyStats]
+    ) {
+        self.tombstones.formUnion(tombstones)
+        self.userAdded.formUnion(userAdded)
+        self.touch.merge(touch) { current, _ in current }
+    }
+
+    func applyMigrated(_ logged: LoggedEvent) {
+        apply(logged)
+    }
+
+    func clearConsumedLogMarker() {
+        consumedLogMarker = nil
+    }
+
     // MARK: - Event application
 
     private func apply(_ logged: LoggedEvent) {
