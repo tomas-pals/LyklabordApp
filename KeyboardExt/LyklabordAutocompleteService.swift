@@ -127,6 +127,9 @@ final class LyklabordAutocompleteService: AutocompleteService {
         let englishCalibration: LexiconCalibrationProfile?
     }
     private var artifacts: LoadedArtifacts?
+    /// The language the current engine is pinned to. `queue`-confined, and
+    /// the authority on whether a mode change actually needs a rebuild.
+    private var engineLanguage: LearningLanguage?
     /// Inflection model loaded after bootstrap, kept so a language switch can
     /// re-inject it into the rebuilt engine instead of re-parsing governors.
     private var loadedInflection: InflectionModel?
@@ -361,7 +364,12 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// pending token, lane state and revert memos all describe text that was
     /// interpreted under the previous vocabulary.
     private func rebuildEngineForLanguageChange() {
-        guard let artifacts else { return }
+        // The engine already speaks this language. Reached on every launch
+        // where the persisted mode is not the default: the main-thread
+        // `refreshFromDefaults` and the queue's own `primeKeyboardMode` read
+        // the same suite value, and the former queues this behind a bootstrap
+        // that has already pinned it correctly.
+        guard let artifacts, engineLanguage != keyboardMode.language else { return }
         flushLearningEventsOnQueue()
         session = nil
         engine = nil
@@ -955,8 +963,9 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// only real work is rebuilding the (cheap) model/corrector/predictor
     /// wrappers and reloading the language's personal store.
     private func buildEngine(from artifacts: LoadedArtifacts, warmingUp: Bool) {
+        let language = keyboardMode.language
         var config = EngineConfig()
-        config.pinnedLanguage = keyboardMode.language.pinned
+        config.pinnedLanguage = language.pinned
         let engine = TypeEngine(
             icelandic: artifacts.icelandic,
             english: artifacts.english,
@@ -983,6 +992,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
         let newSession = TypingSession(engine: engine)
         newSession.fieldKind = fieldKind
         session = newSession
+        engineLanguage = language
     }
 
     // MARK: - Personal learning (on `queue`)

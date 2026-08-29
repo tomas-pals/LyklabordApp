@@ -68,7 +68,10 @@ struct LyklabordToolbar<Standard: View>: View {
         if all.isEmpty {
             EmojiFrecencyRow(actionHandler: actionHandler)
         } else {
-            let emoji = all.filter { $0.type == .emoji }
+            // At most one. `Autocomplete.Toolbar` widens to three emoji
+            // whenever few plain candidates remain, which here would push the
+            // commit slot off-centre — the one thing this bar guarantees.
+            let emoji = all.filter { $0.type == .emoji }.prefix(1)
             let literal = autocompleteContext.literalSuggestion
             let commit = autocompleteContext.commitSuggestion
             // Alternatives: everything that is neither the literal button nor
@@ -81,7 +84,8 @@ struct LyklabordToolbar<Standard: View>: View {
                     LiteralSuggestionButton(suggestion: literal, action: suggestionAction)
                 }
                 Autocomplete.Toolbar(
-                    suggestions: Self.slots(commit: commit, alternatives: alternatives) + emoji,
+                    suggestions: Self.slots(commit: commit, alternatives: alternatives)
+                        + Array(emoji),
                     suggestionAction: suggestionAction
                 )
             }
