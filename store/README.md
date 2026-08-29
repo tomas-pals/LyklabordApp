@@ -7,9 +7,9 @@ not represented by this asset directory.
 
 The project moved from an org Apple Developer team to **Jökull's personal
 team (Team ID `RDC8539AWM`)**, with new identifiers: app bundle
-`is.solberg.lyklabord`, keyboard extension `is.solberg.lyklabord.keyboard`,
-App Group `group.is.solberg.lyklabord`, CloudKit container
-`iCloud.is.solberg.lyklabord`. The old App Store Connect record (Apple ID
+`com.supermassiveapps.lyklabord`, keyboard extension `com.supermassiveapps.lyklabord.keyboard`,
+App Group `group.com.supermassiveapps.lyklabord`, CloudKit container
+`iCloud.com.supermassiveapps.lyklabord`. The old App Store Connect record (Apple ID
 `6791665837`, name "Lyklaborð", bundle `is.lyklabord.ios`) lives on the old
 team and will be **deleted**; a new record gets created on the personal team
 under the identifiers above. See "Personal team migration" below for the
@@ -137,11 +137,11 @@ before you start deleting anything.
    (`RDC8539AWM`):
    - Register identifiers first in Certificates, Identifiers & Profiles (or
      let Xcode automatic signing do it on first archive with the personal
-     team selected): app bundle `is.solberg.lyklabord`, keyboard extension
-     `is.solberg.lyklabord.keyboard`, App Group `group.is.solberg.lyklabord`,
-     iCloud container `iCloud.is.solberg.lyklabord`.
+     team selected): app bundle `com.supermassiveapps.lyklabord`, keyboard extension
+     `com.supermassiveapps.lyklabord.keyboard`, App Group `group.com.supermassiveapps.lyklabord`,
+     iCloud container `iCloud.com.supermassiveapps.lyklabord`.
    - New app record: Platform iOS, Name "Lyklaborð", **primary language =
-     English (U.S.)** (see A.1), bundle ID `is.solberg.lyklabord`, SKU (e.g.
+     English (U.S.)** (see A.1), bundle ID `com.supermassiveapps.lyklabord`, SKU (e.g.
      `lyklabord-ios`), category **Utilities** (secondary Productivity).
 4. Paste metadata from `metadata/en.md` into the en-US localization only.
 5. Enter the App Privacy questionnaire as **Data Not Collected** per
@@ -164,7 +164,7 @@ Requires the base app record to exist first (above).
       "Lyklaborð+"), localized display name in en-US only (A.1 applies here
       too — no `is` locale for subscription metadata either).
 - [ ] **Create one auto-renewable subscription**: product ID e.g.
-      `is.solberg.lyklabord.plus.annual`, duration **1 year**, price point
+      `com.supermassiveapps.lyklabord.plus.annual`, duration **1 year**, price point
       the nearest tier to **$19.00 USD** (Apple auto-generates the other
       territory price points from the tier — no need to hand-set every
       country). Subscription display name + description (en-US). Optional
@@ -219,7 +219,7 @@ _The app-store-screenshots skill's Workflow 9 automates this. Requirements:_
       sync lands, + claim the standard exemption in ASC. **Blocks TestFlight
       builds if unanswered.** (roadmap §1)
 - [ ] **Production CloudKit schema deploy:** the container is
-      `iCloud.is.solberg.lyklabord` — brand-new under the personal team (any
+      `iCloud.com.supermassiveapps.lyklabord` — brand-new under the personal team (any
       schema that existed under the old team's container is irrelevant; this
       is a from-scratch deploy). Promote Development → Production in the
       CloudKit Console (or `cktool`) under the **personal team's** CloudKit

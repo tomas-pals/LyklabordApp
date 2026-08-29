@@ -37,7 +37,7 @@ final class SubscriptionManager {
     /// the ASC product AND `App/Subscription/Lyklabord.storekit` (the local
     /// testing configuration) — see docs/SUBSCRIPTION.md for the full ASC
     /// setup checklist.
-    static let productID = "is.solberg.lyklabord.plus.annual"
+    static let productID = "com.supermassiveapps.lyklabord.plus.annual"
 
     /// ASC subscription group reference name.
     static let subscriptionGroupName = "Lyklaborð+"

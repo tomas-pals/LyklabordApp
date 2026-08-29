@@ -753,7 +753,7 @@ cohort is closed below.
   loader; no mmap open or file I/O on the UI thread), but `.utility` was
   wrong for work the user is actively waiting to see in the suggestion bar,
   especially under system contention at launch. (2) Privacy-safe OS
-  signposts + log milestones (subsystem `is.solberg.lyklabord`, category
+  signposts + log milestones (subsystem `com.supermassiveapps.lyklabord`, category
   `AutocompleteColdStart`): bootstrap queued/started, engine ready, first
   autocomplete pass, first non-empty result. **No proxy text or suggestion
   content is ever logged** — milestones only, upholding the zero-telemetry

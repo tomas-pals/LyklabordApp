@@ -24,7 +24,7 @@ Two paths, both landing in `./sessions/`:
 
 On **stop** (and retroactively for any earlier unexported session), developer
 mode copies each session's `-app.jsonl` + `-kb.jsonl` + a `-meta.json` manifest
-into the app's iCloud ubiquity container (`iCloud.is.solberg.lyklabord`,
+into the app's iCloud ubiquity container (`iCloud.com.supermassiveapps.lyklabord`,
 document-scope-public). It syncs to **the developer's own iCloud Drive** — no
 servers — and lands on this Mac at:
 
@@ -32,7 +32,7 @@ servers — and lands on this Mac at:
 ~/Library/Mobile Documents/iCloud~is~solberg~lyklabord/Documents/sessions
 ```
 
-Note the tilde-encoding: the container id `iCloud.is.solberg.lyklabord` becomes
+Note the tilde-encoding: the container id `iCloud.com.supermassiveapps.lyklabord` becomes
 `iCloud~is~solberg~lyklabord` (dots → tildes, **no** team prefix and **no** `.ios`
 suffix). Override with `--ubiquity-dir` / `LYKLABORD_UBIQUITY_DIR` if your
 account encodes it differently.
@@ -44,10 +44,10 @@ account encodes it differently.
 ./pull.sh <device-udid>   # xcrun devicectl list devices
 ```
 
-Copies `Documents/sessions/` from the app container (`is.solberg.lyklabord`) into
+Copies `Documents/sessions/` from the app container (`com.supermassiveapps.lyklabord`) into
 `./sessions/`. Requires Xcode 15+ (`xcrun devicectl`), device paired &
 unlocked, app installed. (Simulator: use
-`xcrun simctl get_app_container booted is.solberg.lyklabord data` and copy
+`xcrun simctl get_app_container booted com.supermassiveapps.lyklabord data` and copy
 `Documents/sessions` by hand — `devicectl` is device-only.)
 
 ## Ingest (collect + analyze + aggregate)

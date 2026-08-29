@@ -30,13 +30,13 @@ public enum PlusEntitlement {
     /// App Group `UserDefaults` key: whether a verified Lyklaborð+
     /// entitlement was current the last time the containing app checked
     /// `Transaction.currentEntitlements`.
-    public static let entitledDefaultsKey = "is.solberg.lyklabord.plus.entitled"
+    public static let entitledDefaultsKey = "com.supermassiveapps.lyklabord.plus.entitled"
 
     /// App Group `UserDefaults` key: the entitlement's expiration date
     /// (`Transaction.expirationDate`), stored as `timeIntervalSince1970`.
     /// Absent when the app has never written state or the transaction
     /// carried no expiry.
-    public static let expiryDefaultsKey = "is.solberg.lyklabord.plus.expiry"
+    public static let expiryDefaultsKey = "com.supermassiveapps.lyklabord.plus.expiry"
 
     /// How far past the recorded expiry the extension keeps honoring the
     /// flag. Covers (a) App Store billing-retry/grace periods and (b) the

@@ -81,7 +81,7 @@ public extension Autocomplete.Suggestion {
     /// vocabulary (not a base-lexicon word). The autocomplete toolbar reads
     /// ``isPersonalLearned`` off this to offer a long-press "forget"
     /// affordance. Not upstream — see `docs/WAVES.md`.
-    static let isPersonalLearnedInfoKey = "is.solberg.lyklabord.personalLearned"
+    static let isPersonalLearnedInfoKey = "com.supermassiveapps.lyklabord.personalLearned"
 
     /// Whether the suggestion is an autocorrect suggestion.
     var isAutocorrect: Bool {

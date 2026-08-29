@@ -23,7 +23,7 @@ final class AppModel {
     /// Must match `App/Lyklabord.entitlements`,
     /// `KeyboardExt/LyklabordKeyboard.entitlements`, and
     /// `KeyboardApp.appGroupId` in `KeyboardExt/KeyboardViewController.swift`.
-    static let appGroupIdentifier = "group.is.solberg.lyklabord"
+    static let appGroupIdentifier = "group.com.supermassiveapps.lyklabord"
 
     // Filenames inside the App Group container come from
     // `Learning.LearningLanguage` — one personal model and one event log
@@ -41,7 +41,7 @@ final class AppModel {
     /// setting written by `SettingsView`. Not consumed by the extension yet
     /// — this wave only writes the value so a later extension wave has a
     /// stable key to read. Raw value is `SpacebarMode.rawValue`.
-    static let spacebarModeDefaultsKey = "is.solberg.lyklabord.settings.spacebarMode"
+    static let spacebarModeDefaultsKey = "com.supermassiveapps.lyklabord.settings.spacebarMode"
 
     /// KeyboardKit's App Group-backed haptic preference. The app writes this
     /// exact key and the extension's `FeedbackSettings` reads it directly.

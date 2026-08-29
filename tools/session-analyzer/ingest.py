@@ -9,10 +9,10 @@ Sources scanned (each optional; a missing dir is skipped, never fatal):
      copies a session into the app's ubiquity container, iCloud syncs it to
      ~/Library/Mobile Documents/<container>/Documents/sessions on the Mac.
 
-       Container id:      iCloud.is.solberg.lyklabord
+       Container id:      iCloud.com.supermassiveapps.lyklabord
        Mobile-Documents:  iCloud~is~solberg~lyklabord   (dots → tildes, no team prefix,
                           no ".ios" suffix — the app's ubiquity container is
-                          `iCloud.is.solberg.lyklabord`, NOT `iCloud.is.solberg.lyklabord`)
+                          `iCloud.com.supermassiveapps.lyklabord`, NOT `iCloud.com.supermassiveapps.lyklabord`)
 
      Full default path:
        ~/Library/Mobile Documents/iCloud~is~solberg~lyklabord/Documents/sessions

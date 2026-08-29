@@ -31,10 +31,10 @@ commercial forks of a free community project) for the code itself.
   confirming the name was unsquatted in App Store search (reservation in
   App Store Connect still pending as of this writing).
 - **Identifiers renamed** before M2 data accumulation: the legacy bundle ids
-  were replaced by `is.solberg.lyklabord` and
-  `is.solberg.lyklabord.keyboard`
-  (`bundleIdPrefix: is.solberg.lyklabord` in `project.yml`); App Group
-  the legacy App Group → `group.is.solberg.lyklabord` (both entitlements
+  were replaced by `com.supermassiveapps.lyklabord` and
+  `com.supermassiveapps.lyklabord.keyboard`
+  (`bundleIdPrefix: com.supermassiveapps.lyklabord` in `project.yml`); App Group
+  the legacy App Group → `group.com.supermassiveapps.lyklabord` (both entitlements
   files, and `KeyboardApp.appGroupId` in `KeyboardExt/KeyboardViewController.swift`);
   display names (app and extension `CFBundleDisplayName`, plus
   `KeyboardApp.name`) set to "Lyklaborð"; onboarding copy updated to match.
@@ -42,7 +42,7 @@ commercial forks of a free community project) for the code itself.
   `LyklabordApp`; Xcode project, scheme, target, and main product `Lyklabord`;
   extension target/product `LyklabordKeyboard`; Swift/source symbols and files
   use `Lyklabord*`. Internal queue names, keys, logs, scripts, and active docs
-  likewise use `lyklabord` / `is.solberg.lyklabord`. This amendment supersedes
+  likewise use `lyklabord` / `com.supermassiveapps.lyklabord`. This amendment supersedes
   the original temporary decision to retain the working code identity.
 - **Code license: MIT** — resolves the open PLAN.md question in favor of
   maximum adoption over copyleft protection against closed commercial

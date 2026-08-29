@@ -2,7 +2,7 @@
 # Pull the privacy-safe Wave-39 journal from a connected device's App Group.
 set -euo pipefail
 
-GROUP_ID="group.is.solberg.lyklabord"
+GROUP_ID="group.com.supermassiveapps.lyklabord"
 SOURCE="Documents/diagnostics/cold-start.jsonl"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST_DIR="${SCRIPT_DIR}/runs"

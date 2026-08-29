@@ -3,8 +3,8 @@
 Everything a reviewer/questionnaire needs, justified against `docs/PRIVACY.md`
 and `research/tablestakes-roadmap.md §1`.
 
-App: bundle `is.solberg.lyklabord` (+ keyboard extension
-`is.solberg.lyklabord.keyboard`), personal Apple Developer team (Team ID
+App: bundle `com.supermassiveapps.lyklabord` (+ keyboard extension
+`com.supermassiveapps.lyklabord.keyboard`), personal Apple Developer team (Team ID
 `RDC8539AWM`). Commercial model: base keyboard free forever; **"Lyklaborð+"**
 is a $19/year auto-renewable subscription gating personal-vocabulary + typo
 learning (learned words, dictionary editor, iCloud sync). See
@@ -178,10 +178,10 @@ combining them draws both. Preemptive answers, ready to paste or adapt:
 ---
 
 ## Bundle / account facts to confirm before submission
-- Bundle IDs: app `is.solberg.lyklabord`, keyboard extension
-  `is.solberg.lyklabord.keyboard` — confirmed against `project.yml`.
-- App Group `group.is.solberg.lyklabord`, CloudKit container
-  `iCloud.is.solberg.lyklabord` — confirmed against `project.yml`.
+- Bundle IDs: app `com.supermassiveapps.lyklabord`, keyboard extension
+  `com.supermassiveapps.lyklabord.keyboard` — confirmed against `project.yml`.
+- App Group `group.com.supermassiveapps.lyklabord`, CloudKit container
+  `iCloud.com.supermassiveapps.lyklabord` — confirmed against `project.yml`.
 - Apple Developer team: personal team, Team ID `RDC8539AWM` (previously an
   org team; the old ASC record on that team, Apple ID `6791665837`, bundle
   `is.lyklabord.ios`, is being deleted and replaced — see `store/README.md`

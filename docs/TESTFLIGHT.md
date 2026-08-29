@@ -13,7 +13,7 @@ and ensures the stamp describes the exact commit being shipped.
 | Item | Value |
 | --- | --- |
 | App | Lyklaborð (`6792012916`) |
-| Bundle ID | `is.solberg.lyklabord` |
+| Bundle ID | `com.supermassiveapps.lyklabord` |
 | Team ID | `RDC8539AWM` |
 | API account | `lyklabord` |
 | API key ID | `H8RC4UN83P` |

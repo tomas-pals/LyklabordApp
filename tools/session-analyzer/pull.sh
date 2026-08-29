@@ -7,8 +7,8 @@
 # own domain). We pull them into ./sessions/ next to analyze.py.
 #
 # Requires: Xcode 15+ (`xcrun devicectl`), a device paired & unlocked, and the
-# app (is.solberg.lyklabord) installed. Simulator note: for the Simulator use
-#   xcrun simctl get_app_container booted is.solberg.lyklabord data
+# app (com.supermassiveapps.lyklabord) installed. Simulator note: for the Simulator use
+#   xcrun simctl get_app_container booted com.supermassiveapps.lyklabord data
 # then copy Documents/sessions from there — devicectl is device-only.
 #
 # Usage:
@@ -17,7 +17,7 @@
 #
 set -euo pipefail
 
-BUNDLE_ID="is.solberg.lyklabord"
+BUNDLE_ID="com.supermassiveapps.lyklabord"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST="${SCRIPT_DIR}/sessions"
 # Path INSIDE the app data container (appDataContainer domain root is the

@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
-		<string>iCloud.is.solberg.lyklabord</string>
+		<string>iCloud.com.supermassiveapps.lyklabord</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>
@@ -13,11 +13,11 @@
 	</array>
 	<key>com.apple.developer.ubiquity-container-identifiers</key>
 	<array>
-		<string>iCloud.is.solberg.lyklabord</string>
+		<string>iCloud.com.supermassiveapps.lyklabord</string>
 	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.is.solberg.lyklabord</string>
+		<string>group.com.supermassiveapps.lyklabord</string>
 	</array>
 </dict>
 </plist>
