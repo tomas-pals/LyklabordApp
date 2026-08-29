@@ -9,6 +9,7 @@
 //  re-adds a word as user-added rather than restoring its original state.
 //
 
+import Learning
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -71,10 +72,19 @@ struct DictionaryView: View {
                     // (data ownership is never paywalled; see Settings).
                     if !subscriptions.isEntitled {
                         plusLockedState
-                    } else if !appModel.hasAnyWords {
-                        emptyState
                     } else {
-                        list
+                        // The language picker stays visible even for an
+                        // empty store: "nothing here" is only meaningful
+                        // once you can see WHICH store you are looking at,
+                        // and switching away is the obvious next move.
+                        VStack(spacing: 0) {
+                            languagePicker
+                            if appModel.hasAnyWords {
+                                list
+                            } else {
+                                emptyState
+                            }
+                        }
                     }
                 }
             }
@@ -150,6 +160,28 @@ struct DictionaryView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Language
+
+    /// Icelandic and English are separate stores, so this is a scope
+    /// selector, not a filter: it changes which dictionary every action on
+    /// this screen — add, delete, import, export — applies to.
+    private var languagePicker: some View {
+        Picker(
+            Strings.Dictionary.languagePickerLabel,
+            selection: Binding(
+                get: { appModel.language },
+                set: { appModel.setLanguage($0) }
+            )
+        ) {
+            ForEach(LearningLanguage.allCases) { language in
+                Text(Strings.Dictionary.languageName(language)).tag(language)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
     // MARK: - List
@@ -267,6 +299,10 @@ struct DictionaryView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(Strings.Dictionary.emptyStateTitle)
                         .font(.title2.bold())
+                    // Names the language explicitly: with two stores behind
+                    // one screen, "empty" is otherwise ambiguous.
+                    Text(Strings.Dictionary.emptyLanguageBody(appModel.language))
+                        .foregroundStyle(.secondary)
                     Text(Strings.Dictionary.emptyStateHowItWorks)
                         .foregroundStyle(.secondary)
                 }

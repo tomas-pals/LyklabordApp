@@ -25,13 +25,17 @@ final class AppModel {
     /// `KeyboardApp.appGroupId` in `KeyboardExt/KeyboardViewController.swift`.
     static let appGroupIdentifier = "group.is.solberg.lyklabord"
 
-    /// Filenames inside the App Group container. Chosen here because
-    /// neither file exists on disk yet — the keyboard extension does not
-    /// write learning events until its own M2 wave lands. If that wave picks
-    /// different names, update these two constants to match (single source
-    /// of truth for the app side).
-    private static let personalModelFileName = "personal-model.json"
-    private static let learningEventLogFileName = "learning-events.log"
+    // Filenames inside the App Group container come from
+    // `Learning.LearningLanguage` — one personal model and one event log
+    // PER LANGUAGE, shared verbatim with the keyboard extension. See
+    // `LearningStoreMigration` for the split of the pre-separation files.
+
+    /// `UserDefaults` key (App Group suite) holding the keyboard's current
+    /// language. Written by the extension's mode key
+    /// (`KeyboardExt/KeyboardMode.swift`, `languageDefaultsKey`) and read
+    /// here, so the dictionary editor opens on the language actually in use.
+    /// Raw value is `LearningLanguage.rawValue` ("is" / "en").
+    static let keyboardLanguageDefaultsKey = "is.solberg.lyklabord.settings.keyboardLanguage"
 
     /// `UserDefaults` key (in the App Group suite) for the spacebar-mode
     /// setting written by `SettingsView`. Not consumed by the extension yet
@@ -61,14 +65,43 @@ final class AppModel {
     private(set) var userAddedWords: [String] = []
     private(set) var lastErrorMessage: String?
 
+    /// Which store the dictionary editor is showing. The two are fully
+    /// separate — every listing, edit, import and export below is scoped to
+    /// this one, because a word the user taught the Icelandic keyboard has
+    /// no business appearing when they are typing English (the engine
+    /// enforces the same split via `EngineConfig.pinnedLanguage`).
+    ///
+    /// Switching it swaps the visible store; nothing is written or moved.
+    private(set) var language: LearningLanguage
+
+    func setLanguage(_ new: LearningLanguage) {
+        guard new != language else { return }
+        language = new
+        refreshListings()
+    }
+
     /// M2 wave 3: owns the CloudKit sync loop (app-only — the keyboard
     /// extension never syncs). Fed by `compact()` and every dictionary
     /// mutation via `noteLocalChange()` (coalesced ~5s in the coordinator).
     let syncCoordinator: SyncCoordinator
 
-    private var model: PersonalModel?
-    private let modelURL: URL?
-    private let eventLogURL: URL?
+    /// One loaded `PersonalModel` per language. Both are held: compaction
+    /// has to drain BOTH event logs (the keyboard writes to whichever it was
+    /// in), and holding a few thousand words twice costs nothing next to
+    /// re-reading a file on every language toggle.
+    private var models: [LearningLanguage: PersonalModel] = [:]
+    private let container: URL?
+
+    /// The store the editor is currently showing.
+    private var model: PersonalModel? { models[language] }
+
+    private func modelURL(for language: LearningLanguage) -> URL? {
+        container?.appendingPathComponent(language.personalModelFileName)
+    }
+
+    private func eventLogURL(for language: LearningLanguage) -> URL? {
+        container?.appendingPathComponent(language.eventLogFileName)
+    }
 
     var hasAnyWords: Bool {
         !learnedWords.isEmpty || !userAddedWords.isEmpty
@@ -77,47 +110,70 @@ final class AppModel {
     // MARK: - Init
 
     init() {
-        if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupIdentifier) {
-            containerState = .ready
-            modelURL = container.appendingPathComponent(Self.personalModelFileName)
-            eventLogURL = container.appendingPathComponent(Self.learningEventLogFileName)
-        } else {
-            containerState = .unavailable
-            modelURL = nil
-            eventLogURL = nil
+        let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: Self.appGroupIdentifier
+        )
+        self.container = container
+        containerState = container == nil ? .unavailable : .ready
+        language = Self.keyboardLanguage(default: .icelandic)
+        // Split a pre-language-separation store before anything reads one.
+        // Idempotent and coordinated; the extension runs the same call on
+        // its own bootstrap, whichever process gets there first.
+        if let container {
+            try? LearningStoreMigration.runCoordinated(in: container)
         }
-        syncCoordinator = SyncCoordinator(modelURL: modelURL)
-        loadModel()
-        // A pulled/merged model was written to `modelURL` by the
-        // coordinator — reload our in-memory copy and listings from disk.
+        // iCloud sync covers the Icelandic store only. There is exactly one
+        // snapshot record per user (`SyncActivation.recordName`), so a
+        // second lane needs a second record and a merge story of its own;
+        // until then English personal vocabulary is device-local, which is
+        // the honest reading of a store that did not exist before this.
+        syncCoordinator = SyncCoordinator(
+            modelURL: container?.appendingPathComponent(
+                LearningLanguage.icelandic.personalModelFileName)
+        )
+        loadModels()
+        // A pulled/merged model was written to the Icelandic model file by
+        // the coordinator — reload our in-memory copies and listings.
         syncCoordinator.onModelDataReplaced = { [weak self] in
-            self?.loadModel()
+            self?.loadModels()
         }
+    }
+
+    /// The language the keyboard's mode key was last left on, so the editor
+    /// opens on the store the user is actually typing into.
+    private static func keyboardLanguage(default fallback: LearningLanguage) -> LearningLanguage {
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else { return fallback }
+        return defaults.string(forKey: keyboardLanguageDefaultsKey)
+            .flatMap(LearningLanguage.init(rawValue:)) ?? fallback
     }
 
     // MARK: - Loading & compaction
 
-    private func loadModel() {
-        guard let modelURL else { return }
+    private func loadModels() {
+        guard container != nil else { return }
+        for language in LearningLanguage.allCases {
+            models[language] = loadModel(for: language)
+        }
+        refreshListings()
+    }
+
+    private func loadModel(for language: LearningLanguage) -> PersonalModel {
+        guard let url = modelURL(for: language) else { return PersonalModel() }
         do {
-            if FileManager.default.fileExists(atPath: modelURL.path) {
-                model = try CoordinatedFileAccess.coordinateRead(at: modelURL) { url in
-                    try PersonalModel(contentsOf: url)
-                }
-            } else {
-                model = PersonalModel()
+            guard FileManager.default.fileExists(atPath: url.path) else { return PersonalModel() }
+            return try CoordinatedFileAccess.coordinateRead(at: url) { url in
+                try PersonalModel(contentsOf: url)
             }
         } catch {
             lastErrorMessage = "\(error)"
-            model = PersonalModel()
+            return PersonalModel()
         }
-        refreshListings()
     }
 
     /// Merges any learning events the keyboard extension appended since the
     /// last compaction into the personal model, then saves. Cheap and safe
     /// to call repeatedly — a no-op when the log is empty/missing. Call on
-    /// launch (`init` → `loadModel` does an initial load; call this too so a
+    /// launch (`init` → `loadModels` does an initial load; call this too so a
     /// log written before first launch is picked up) and whenever
     /// `scenePhase` becomes `.active` (see `LyklabordApp`), so the
     /// dictionary editor reflects typing done in other apps since the user
@@ -129,18 +185,27 @@ final class AppModel {
     /// atomic write (already coordinated-safe against the extension, which
     /// never writes the model file).
     func compact() {
-        guard let model, let modelURL, let eventLogURL else { return }
-        do {
-            try CoordinatedFileAccess.coordinateWrite(at: eventLogURL) { logURL in
-                try model.compactAndSave(applying: EventLog(url: logURL), to: modelURL)
+        // Every language, not just the visible one: the keyboard appends to
+        // whichever log its mode key was on, and a store that is never
+        // compacted never learns.
+        for language in LearningLanguage.allCases {
+            guard
+                let model = models[language],
+                let modelURL = modelURL(for: language),
+                let eventLogURL = eventLogURL(for: language)
+            else { continue }
+            do {
+                try CoordinatedFileAccess.coordinateWrite(at: eventLogURL) { logURL in
+                    try model.compactAndSave(applying: EventLog(url: logURL), to: modelURL)
+                }
+            } catch {
+                lastErrorMessage = "\(error)"
             }
-            refreshListings()
-            // Freshly compacted state on disk — schedule a (coalesced)
-            // sync round so other devices see it.
-            syncCoordinator.noteLocalChange()
-        } catch {
-            lastErrorMessage = "\(error)"
         }
+        refreshListings()
+        // Freshly compacted state on disk — schedule a (coalesced)
+        // sync round so other devices see it.
+        syncCoordinator.noteLocalChange()
     }
 
     private func refreshListings() {
@@ -149,7 +214,7 @@ final class AppModel {
     }
 
     private func persist() {
-        guard let model, let modelURL else { return }
+        guard let model, let modelURL = modelURL(for: language) else { return }
         do {
             try model.save(to: modelURL)
             // Dictionary-editor mutation persisted — coalesced sync so
@@ -278,13 +343,16 @@ final class AppModel {
         )
     }
 
-    /// Suggested filename, e.g. `Lyklabord-ordasafn-2026-07-15.json`
-    /// (ASCII + fixed date format so it's tidy on every share target).
+    /// Suggested filename, e.g. `Lyklabord-ordasafn-is-2026-07-15.json`
+    /// (ASCII + fixed date format so it's tidy on every share target). The
+    /// language code is part of the name because an export covers ONE store
+    /// — two exports of "my words" that differ only in content would be
+    /// impossible to tell apart on a share sheet otherwise.
     func exportFilename(date: Date = Date()) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
-        return "\(Strings.DataExport.filePrefix)-\(formatter.string(from: date)).json"
+        return "\(Strings.DataExport.filePrefix)-\(language.rawValue)-\(formatter.string(from: date)).json"
     }
 
     // MARK: - Delete all data (v1-blocker: total + instant, unlike SwiftKey)
@@ -311,31 +379,30 @@ final class AppModel {
     /// the container isn't provisioned yet.
     @discardableResult
     func deleteAllData() async -> DeleteAllResult {
-        var localCleared = false
+        // Every language: "delete all my data" means all of it, not just
+        // whichever store the editor happens to be showing.
+        var localCleared = true
 
-        // 1. Fresh personal model over the old file.
-        let fresh = PersonalModel()
-        model = fresh
-        if let modelURL {
-            do {
-                try fresh.save(to: modelURL)
-                localCleared = true
-            } catch {
-                lastErrorMessage = "\(error)"
+        for language in LearningLanguage.allCases {
+            // 1. Fresh personal model over the old file.
+            let fresh = PersonalModel()
+            models[language] = fresh
+            if let modelURL = modelURL(for: language) {
+                do {
+                    try fresh.save(to: modelURL)
+                } catch {
+                    lastErrorMessage = "\(error)"
+                    localCleared = false
+                }
             }
-        } else {
-            // No container (Simulator without entitlements): the in-memory
-            // model is reset; there is nothing on disk to clear.
-            localCleared = true
-        }
-
-        // 2. Remove the event log entirely, coordinated against the
-        //    extension's appends. It recreates the file with a fresh
-        //    generation header on its next write.
-        if let eventLogURL {
-            _ = try? CoordinatedFileAccess.coordinateWrite(at: eventLogURL) { url in
-                if FileManager.default.fileExists(atPath: url.path) {
-                    try FileManager.default.removeItem(at: url)
+            // 2. Remove the event log entirely, coordinated against the
+            //    extension's appends. It recreates the file with a fresh
+            //    generation header on its next write.
+            if let eventLogURL = eventLogURL(for: language) {
+                _ = try? CoordinatedFileAccess.coordinateWrite(at: eventLogURL) { url in
+                    if FileManager.default.fileExists(atPath: url.path) {
+                        try FileManager.default.removeItem(at: url)
+                    }
                 }
             }
         }

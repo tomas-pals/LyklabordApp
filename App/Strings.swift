@@ -21,6 +21,7 @@
 //
 
 import Foundation
+import Learning
 
 enum Strings {
 
@@ -124,6 +125,25 @@ enum Strings {
         static let emptyStatePrivacy = "Þetta gerist eingöngu á tækinu þínu. Orðasafnið fer aldrei neitt nema í þitt eigið iCloud — það sem þú skrifar á lyklaborðið fer ekki útaf tækinu, nema orðasafnið þitt og það fer bara beint á iCloud reikninginn þinn."
 
         static let noSearchResults = "Ekkert orð fannst"
+
+        /// Language picker above the list. Icelandic and English are
+        /// separate stores (`Learning.LearningLanguage`) — the picker
+        /// chooses which one you are editing, it does not move words.
+        static let languagePickerLabel = "Tungumál"
+        static let languageIcelandic = "Íslenska"
+        static let languageEnglish = "Enska"
+        static func languageName(_ language: LearningLanguage) -> String {
+            switch language {
+            case .icelandic: languageIcelandic
+            case .english: languageEnglish
+            }
+        }
+        /// Empty state for a store that simply has not been typed into yet
+        /// — distinct from "the dictionary is empty", which reads as though
+        /// nothing has ever been learned at all.
+        static func emptyLanguageBody(_ language: LearningLanguage) -> String {
+            "Ekkert er enn lært á \(languageName(language).lowercased()). Skiptu um ham á lyklaborðinu með takkanum við hliðina á bilstönginni og skrifaðu — orðin birtast hér."
+        }
     }
 
     enum SwiftKeyImport {
@@ -225,7 +245,7 @@ enum Strings {
     /// "Export my data" — the symmetric counterpart to the SwiftKey import.
     enum DataExport {
         static let button = "Flytja út gögnin mín"
-        static let footer = "Vistaðu allt sem lyklaborðið hefur lært — lærð orð og tíðni þeirra, orðin sem þú bættir við og orðin sem þú hefur eytt — sem eina læsilega skrá sem þú getur geymt eða fært annað. Þetta er spegilmyndin af SwiftKey-innflutningnum: gögnin þín eru þín til að taka með þér."
+        static let footer = "Vistaðu allt sem lyklaborðið hefur lært — lærð orð og tíðni þeirra, orðin sem þú bættir við og orðin sem þú hefur eytt — sem eina læsilega skrá sem þú getur geymt eða fært annað. Þetta er spegilmyndin af SwiftKey-innflutningnum: gögnin þín eru þín til að taka með þér. Skráin nær yfir það tungumál sem valið er í orðasafninu; tungumálin eru aðskilin orðasöfn."
         /// Human-readable note embedded in the exported JSON file itself.
         static let fileNote = "Þessi skrá er þín persónulega Lyklaborðsorðabók: lærð og handvirkt viðbætt orð, eyðingar, tíðni orðapara og innsláttartölfræði. Hún hefur aldrei farið af tækinu þínu nema þú hafir deilt henni rétt í þessu. Sjá $schema fyrir nákvæmt snið."
         static let preparing = "Undirbý útflutning…"
