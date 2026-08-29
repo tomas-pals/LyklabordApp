@@ -1,5 +1,5 @@
 //
-//  LyklabordEmojiToolbar.swift
+//  LyklabordToolbar.swift
 //  LyklabordKeyboard
 //
 //  The autocomplete toolbar. Two Lyklaborð departures from the stock

@@ -37,6 +37,11 @@ final class KeyboardViewController: KeyboardInputViewController {
     /// consumes it before UITextDocumentProxy/autocomplete/learning see it.
     private let emojiSearchSession = IcelandicEmojiSearchSession()
 
+    /// Observable mirror of the language/incognito mode, so the mode key's
+    /// face re-renders the moment it is tapped. Created in `viewDidLoad`
+    /// once the autocomplete service (the authoritative owner) exists.
+    private var modeContext = KeyboardModeContext(service: nil)
+
     override func viewDidLoad() {
         // Wave 39 activation boundary. Capture before KeyboardKit/App Group
         // setup so the cold report includes controller work that happens
@@ -131,6 +136,13 @@ final class KeyboardViewController: KeyboardInputViewController {
         )
         services.autocompleteService = autocompleteService
 
+        // Language / incognito mode (the key between emoji and space). The
+        // service primes itself from the App Group suite on its own queue
+        // before the engine is built; this mirror catches up here so the key
+        // renders the restored mode rather than flashing "ÍS".
+        modeContext = KeyboardModeContext(service: autocompleteService)
+        modeContext.refreshFromDefaults(appGroupId: KeyboardApp.lyklabord.appGroupId)
+
         // System text replacements (issue #5): iOS never auto-applies the
         // user's Settings → General → Keyboard → Text Replacement shortcuts
         // inside third-party keyboards — the extension must fetch and apply
@@ -181,7 +193,8 @@ final class KeyboardViewController: KeyboardInputViewController {
         // verbatim-suggestion taps to the session.
         services.actionHandler = LyklabordActionHandler(
             controller: self,
-            emojiSearchSession: emojiSearchSession
+            emojiSearchSession: emojiSearchSession,
+            modeContext: modeContext
         )
 
         // D2/D3 (docs/PUNCTUATION_BEHAVIOR.md): a period preceded by a digit is
@@ -233,6 +246,10 @@ final class KeyboardViewController: KeyboardInputViewController {
         // Full Access the suite is unavailable and this stays at mode 1).
         (services.autocompleteService as? LyklabordAutocompleteService)?
             .refreshSpacebarMode()
+        // Language / incognito mode: same per-presentation re-read, for the
+        // case where another process (a second host app's copy of the
+        // extension) changed it while this one was off-screen.
+        modeContext.refreshFromDefaults(appGroupId: KeyboardApp.lyklabord.appGroupId)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -300,12 +317,13 @@ final class KeyboardViewController: KeyboardInputViewController {
             KeyboardView(
                 state: controller.state,
                 services: controller.services,
-                // Custom key faces (currently the adaptive quote key). The
-                // spacebar keeps its standard "Bil" label: the word space
+                // Custom key faces: the adaptive quote key and the mode key.
+                // The spacebar keeps its standard "Bil" label: the word space
                 // commits is shown in the suggestion bar's centre slot.
                 buttonContent: { params in
                     LyklabordButtonContent(
                         action: params.item.action,
+                        modeContext: self.modeContext,
                         standard: params.view
                     )
                 },
@@ -316,7 +334,8 @@ final class KeyboardViewController: KeyboardInputViewController {
                     // else keeps KeyboardKit's stock label.
                     params.view.lyklabordAccessibility(
                         for: params.item.action,
-                        context: controller.state.keyboardContext
+                        context: controller.state.keyboardContext,
+                        modeContext: self.modeContext
                     )
                 },
                 collapsedView: { $0.view },
@@ -356,6 +375,19 @@ final class KeyboardViewController: KeyboardInputViewController {
                 height: LyklabordKeyboardMetrics.toolbarHeight,
                 padding: LyklabordKeyboardMetrics.toolbarPadding
             ))
+            // The mode key is a `.custom` action, which KeyboardKit styles
+            // like a letter (light background) because it has no way to know
+            // better. Borrow the emoji key's style verbatim so it reads as
+            // what it is — a modifier in the bottom-left cluster, sitting
+            // next to that very key.
+            .keyboardButtonStyle { params in
+                let context = controller.state.keyboardContext
+                guard params.action == .lyklabordMode else {
+                    return params.standardStyle(for: context)
+                }
+                return KeyboardAction.keyboardType(.emojis)
+                    .standardButtonStyle(for: context, isPressed: params.isPressed)
+            }
             .keyboardCalloutActions { params in
                 // Long-press the emoji key → a quick row of the user's top-10
                 // emoji by frecency (seeded with popular defaults), rendered by
@@ -495,9 +527,20 @@ private extension View {
     @ViewBuilder
     func lyklabordAccessibility(
         for action: KeyboardAction,
-        context: KeyboardContext
+        context: KeyboardContext,
+        modeContext: KeyboardModeContext
     ) -> some View {
-        if let label = action.betterAccessibilityLabel(for: context) {
+        if action == .lyklabordMode {
+            // The label has to be read off the live mode: `.custom` carries
+            // only its name, and "Tungumál" alone would not tell a VoiceOver
+            // user which of the three states the key is in.
+            self
+                .accessibilityElement(children: .ignore)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Innsláttarhamur")
+                .accessibilityValue(modeContext.mode.accessibilityLabel)
+                .accessibilityHint("Tvísmelltu til að skipta um ham")
+        } else if let label = action.betterAccessibilityLabel(for: context) {
             self
                 .accessibilityElement(children: .ignore)
                 .accessibilityAddTraits(.isButton)
@@ -682,6 +725,13 @@ final class LyklabordIPhoneLayoutService: KeyboardLayout.iPhoneLayoutService {
             return false
         }
         actions.insert(.keyboardType(.emojis), at: numericIndex.map { $0 + 1 } ?? 0)
+        // Language / incognito key immediately before the spacebar, i.e. the
+        // last slot of the left-hand modifier cluster. Everything that
+        // changes what a keystroke MEANS lives there (123, emoji, globe);
+        // the mode key changes what every keystroke means most of all.
+        if let spaceIndex = actions.firstIndex(of: .space) {
+            actions.insert(.lyklabordMode, at: spaceIndex)
+        }
         // Period key immediately before the return key (dogfood pattern).
         if let returnIndex = actions.firstIndex(where: { $0.isPrimaryAction }) {
             actions.insert(.character("."), at: returnIndex)
@@ -705,6 +755,12 @@ final class LyklabordIPhoneLayoutService: KeyboardLayout.iPhoneLayoutService {
         if context.keyboardType == .alphabetic,
             row == inputSet(for: context).rows.count
         {
+            // Same reason as the emoji key below: `.custom` defaults to
+            // `.available`, which would split the row with the spacebar.
+            // Slightly narrower than the emoji key — its face is two small
+            // letters, and the spacebar is the key that pays for every
+            // millimetre spent here.
+            if action == .lyklabordMode { return .percentage(0.10) }
             switch action {
             case .character("."):
                 return .percentage(0.08)
@@ -816,12 +872,22 @@ final class LyklabordLayoutService: KeyboardLayout.DeviceBasedLayoutService {
 final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
 
     private let emojiSearchSession: IcelandicEmojiSearchSession
+    private let modeContext: KeyboardModeContext
+
+    /// Set when the mode key's long press fires, so the release that
+    /// inevitably follows doesn't ALSO cycle the mode. Cleared on the next
+    /// press of that key. `GestureButton` delivers `.longPress` and then
+    /// `.release` for one continuous touch, and the two gestures mean
+    /// different things here.
+    private var didLongPressModeKey = false
 
     init(
         controller: KeyboardController,
-        emojiSearchSession: IcelandicEmojiSearchSession
+        emojiSearchSession: IcelandicEmojiSearchSession,
+        modeContext: KeyboardModeContext
     ) {
         self.emojiSearchSession = emojiSearchSession
+        self.modeContext = modeContext
         super.init(
             controller: controller,
             keyboardContext: controller.state.keyboardContext,
@@ -911,6 +977,21 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
         return super.replacementAction(for: gesture, on: action)
     }
 
+    /// The mode key is a `.custom` action, and KeyboardKit gates haptics on
+    /// an action having a standard gesture action to perform — which, by
+    /// construction, this one does not. Without this it would be the only
+    /// silent, dead-feeling key on the board.
+    override func shouldTriggerHapticFeedback(
+        for gesture: Keyboard.Gesture,
+        on action: KeyboardAction
+    ) -> Bool {
+        guard action == .lyklabordMode else {
+            return super.shouldTriggerHapticFeedback(for: gesture, on: action)
+        }
+        guard feedbackContext.settings.isHapticFeedbackEnabled else { return false }
+        return gesture == .press || gesture == .longPress
+    }
+
     override func shouldApplyAutocorrectSuggestion(
         before gesture: Keyboard.Gesture,
         on action: KeyboardAction
@@ -980,6 +1061,29 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
             MainActor.assumeIsolated {
                 emojiSearchSession.expectEmojiHostInsertion(before: before, emoji: emoji.char)
             }
+        }
+
+        // Mode key (ÍS / EN / huliðshamur). `.custom` has no standard action,
+        // so the behavior is entirely ours: tap cycles, long press toggles
+        // incognito without disturbing the language. It never edits the
+        // document, so it returns BEFORE the proxy-edit ledger snapshot
+        // rather than recording an empty edit — but it does refresh the bar,
+        // since a language change rebuilds the engine underneath it (the
+        // rebuild is already queued on the engine's serial queue, so the
+        // refresh runs after it).
+        if action == .lyklabordMode {
+            switch gesture {
+            case .press: didLongPressModeKey = false
+            case .longPress:
+                didLongPressModeKey = true
+                modeContext.toggleIncognito()
+            case .release:
+                if !didLongPressModeKey { modeContext.cycle() }
+            default: break
+            }
+            tryTriggerFeedback(for: gesture, on: action)
+            tryPerformAutocomplete(after: gesture, on: action)
+            return
         }
 
         // Proxy-edit ledger: snapshot the window before ANY of this call's

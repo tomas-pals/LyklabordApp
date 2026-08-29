@@ -77,8 +77,14 @@ final class EmojiFrequencyStore {
 
     // MARK: - API
 
+    /// Suspends `record` while set; `top` keeps working. Incognito's rule is
+    /// "read everything, remember nothing", and an emoji sent in incognito is
+    /// exactly the kind of thing that must not resurface in the quick row.
+    var isRecordingSuspended = false
+
     /// Record one use of `emoji`: decay its prior score to now, then +1.
     func record(_ emoji: String) {
+        guard !isRecordingSuspended else { return }
         guard !emoji.isEmpty, EmojiCatalog.shared?.isAvailable(emoji) ?? true else { return }
         let now = Date().timeIntervalSince1970
         var dict = load()

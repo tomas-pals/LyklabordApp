@@ -41,12 +41,41 @@ private struct QuoteKeyFace: View {
     }
 }
 
+/// The mode key's face: "ÍS", "EN", or the incognito glyph.
+///
+/// Two-letter language codes rather than flags — the key selects a
+/// VOCABULARY, not a country, and a flag would also have to pick one for
+/// English. Incognito drops the code entirely for a glyph: it is not a
+/// third language, it is a different promise about what the keyboard
+/// remembers, and it should not read as one more item in the same list.
+private struct ModeKeyFace: View {
+    let mode: KeyboardMode
+
+    var body: some View {
+        Group {
+            if let label = mode.shortLabel {
+                Text(label)
+                    .font(.system(size: 15, weight: .medium))
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+            } else {
+                Image(systemName: KeyboardMode.incognitoSymbolName)
+                    .font(.system(size: 17, weight: .regular))
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 struct LyklabordButtonContent<Standard: View>: View {
     let action: KeyboardAction
+    @ObservedObject var modeContext: KeyboardModeContext
     let standard: Standard
 
     var body: some View {
-        if case .character(let char) = action,
+        if action == .lyklabordMode {
+            ModeKeyFace(mode: modeContext.mode)
+        } else if case .character(let char) = action,
             char == SmartPunctuation.open || char == SmartPunctuation.close {
             QuoteKeyFace(active: char)
         } else {

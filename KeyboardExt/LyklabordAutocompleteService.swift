@@ -108,6 +108,28 @@ final class LyklabordAutocompleteService: AutocompleteService {
     private var engine: TypeEngine?
     private var personalModelURL: URL?
     private var eventLogURL: URL?
+    private var appGroupContainerURL: URL?
+    /// One legacy-store migration attempt per process (see
+    /// `migrateLegacyLearningStoreIfNeeded`); a language switch re-enters
+    /// `setupPersonalLearning` and must not re-check the filesystem.
+    private var hasCheckedLegacyLearningStore = false
+
+    /// The artifacts the engine is built over, retained so switching language
+    /// can rebuild the engine without re-mmapping anything. Both lexicons stay
+    /// loaded in either mode — the pinning happens in `EngineConfig`, and
+    /// unmapping/remapping ~100MB of artifacts on a key tap would be a far
+    /// worse trade than the address space.
+    private struct LoadedArtifacts {
+        let icelandic: FrequencyLexicon
+        let english: FrequencyLexicon
+        let morphology: BinaryLemmatizer?
+        let icelandicCalibration: LexiconCalibrationProfile?
+        let englishCalibration: LexiconCalibrationProfile?
+    }
+    private var artifacts: LoadedArtifacts?
+    /// Inflection model loaded after bootstrap, kept so a language switch can
+    /// re-inject it into the rebuilt engine instead of re-parsing governors.
+    private var loadedInflection: InflectionModel?
 
     /// DEV-MODE typing-session recorder (see `SessionRecorder`). Confined to
     /// this `queue` exactly like `session`. OFF by default: a single App Group
@@ -115,6 +137,13 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// personal model are completely unaffected by it. nil-safe when there is
     /// no App Group container.
     private var recorder: SessionRecorder?
+
+    /// The dev recorder, or nil while incognito. Its JSONL lines carry the
+    /// document window verbatim, so it is the single most sensitive writer in
+    /// the extension and the first thing incognito has to switch off.
+    private var activeRecorder: SessionRecorder? {
+        keyboardMode.isIncognito ? nil : recorder
+    }
     /// mtime of the personal-model file at the last (re)load, so the
     /// viewWillAppear re-stat only re-reads a genuinely changed file.
     private var personalModelDate: Date?
@@ -158,6 +187,12 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// until the first read of the App Group suite (which may be unavailable
     /// without Full Access; see `SpacebarMode.current`).
     private var _spacebarMode: SpacebarMode = .completeCurrentWord
+
+    /// Cached language/incognito mode. Same lock and the same reasoning as
+    /// `_spacebarMode`: written from the main thread when the user taps the
+    /// mode key, read on the engine queue (learning suppression) and on the
+    /// main thread (the key's own face).
+    private var _keyboardMode: KeyboardMode = .default
 
     private func setRevertMemoArmed(_ armed: Bool) {
         revertMemoLock.lock()
@@ -250,6 +285,91 @@ final class LyklabordAutocompleteService: AutocompleteService {
         revertMemoLock.unlock()
     }
 
+    // MARK: - Language / incognito mode
+
+    /// The active language and whether learning is suspended. Read from the
+    /// main thread on every keyboard render (the mode key's face) and from
+    /// the engine queue (the learning-write gate).
+    var keyboardMode: KeyboardMode {
+        revertMemoLock.lock()
+        defer { revertMemoLock.unlock() }
+        return _keyboardMode
+    }
+
+    /// Adopt the persisted mode before the engine exists. Runs on `queue`
+    /// at the head of bootstrap, so `buildEngine` pins the right language
+    /// and opens the right personal store on the FIRST build — going through
+    /// `applyKeyboardMode` here would instead queue a rebuild behind the one
+    /// that just happened.
+    private func primeKeyboardMode() {
+        let mode = KeyboardMode.current(appGroupId: appGroupId)
+        revertMemoLock.lock()
+        _keyboardMode = mode
+        revertMemoLock.unlock()
+        let suspendEmojiFrecency = mode.isIncognito
+        DispatchQueue.main.async {
+            EmojiFrequencyStore.shared.isRecordingSuspended = suspendEmojiFrecency
+        }
+    }
+
+    /// The user tapped (or long-pressed) the mode key.
+    func setKeyboardMode(_ mode: KeyboardMode) {
+        applyKeyboardMode(mode, persist: true)
+    }
+
+    private func applyKeyboardMode(_ mode: KeyboardMode, persist: Bool) {
+        revertMemoLock.lock()
+        let previous = _keyboardMode
+        _keyboardMode = mode
+        revertMemoLock.unlock()
+        guard previous != mode else { return }
+
+        if persist {
+            let appGroupId = appGroupId
+            Self.auxiliaryStateQueue.async { mode.write(appGroupId: appGroupId) }
+        }
+        // Emoji frecency is a main-thread store touched by the action handler.
+        let suspendEmojiFrecency = mode.isIncognito
+        DispatchQueue.main.async {
+            EmojiFrequencyStore.shared.isRecordingSuspended = suspendEmojiFrecency
+        }
+        if previous.isIncognito != mode.isIncognito {
+            queue.async { [weak self] in
+                // Session-learned vocabulary is RAM-only, but it outlives the
+                // incognito window (the engine survives host-app switches), so
+                // crossing the boundary in either direction drops it: nothing
+                // typed incognito may be suggested afterwards, and nothing
+                // learned before it needs to follow the user in.
+                self?.engine?.clearSessionVocabulary()
+            }
+        }
+        // A language change swaps both the base vocabulary and the personal
+        // store, so the engine has to be rebuilt. Entering or leaving
+        // incognito changes only whether writes happen, which is a per-flush
+        // check — no rebuild.
+        guard previous.language != mode.language else { return }
+        queue.async { [weak self] in
+            self?.rebuildEngineForLanguageChange()
+        }
+    }
+
+    /// Swap the engine over to `keyboardMode.language`.
+    ///
+    /// Pending learning events are flushed to the OUTGOING language's log
+    /// first — they were typed in that language and belong in its store —
+    /// and the session is discarded rather than carried over, because its
+    /// pending token, lane state and revert memos all describe text that was
+    /// interpreted under the previous vocabulary.
+    private func rebuildEngineForLanguageChange() {
+        guard let artifacts else { return }
+        flushLearningEventsOnQueue()
+        session = nil
+        engine = nil
+        personalModelDate = nil
+        personalLayerEntitled = nil
+        buildEngine(from: artifacts, warmingUp: false)
+    }
+
     // MARK: - Constants
 
     /// `additionalInfo` key carrying the pending token a suggestion
@@ -259,12 +379,9 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// text that the suggestion is not stale before applying.
     static let pendingTokenInfoKey = "is.solberg.lyklabord.pendingToken"
 
-    /// Filenames inside the App Group container. MUST match the app-side
-    /// constants in `App/AppModel.swift` (`personalModelFileName` /
-    /// `learningEventLogFileName`) — the extension appends events to the
-    /// log and reads the model; the app compacts the log into the model.
-    static let personalModelFileName = "personal-model.json"
-    static let learningEventLogFileName = "learning-events.log"
+    // Store filenames come from `Learning.LearningLanguage`, which both this
+    // extension and the containing app read — there is one model file and one
+    // event log PER LANGUAGE.
 
     // MARK: - Init
 
@@ -288,6 +405,10 @@ final class LyklabordAutocompleteService: AutocompleteService {
         Self.coldStartSignposter.emitEvent("Bootstrap queued")
         Self.coldStartLogger.notice("Autocomplete bootstrap queued")
         queue.async { [weak self] in
+            // Before anything is built: the language decides which lexicon
+            // the engine is pinned to and which personal store it opens, so
+            // reading it here saves an immediate rebuild.
+            self?.primeKeyboardMode()
             self?.bootstrapIfNeeded()
         }
         // Neither concern is needed to construct the base engine. Resolve
@@ -460,7 +581,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
         queue.async { [weak self] in
             self?.session?.noteTap(char: character, dx: dx, dy: dy)
             // DEV-MODE recorder: no-op unless a session is armed (cached bool).
-            self?.recorder?.captureTap(char: character, dx: dx, dy: dy)
+            self?.activeRecorder?.captureTap(char: character, dx: dx, dy: dy)
         }
     }
 
@@ -468,7 +589,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// handler's `.backspace` release). No-op unless a session is armed.
     func noteRecordedBackspace() {
         queue.async { [weak self] in
-            self?.recorder?.captureBackspace()
+            self?.activeRecorder?.captureBackspace()
         }
     }
 
@@ -476,7 +597,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// the action handler (space-commit / deferred-dot). No-op unless armed.
     func noteRecordedAutocorrectApplied(_ text: String) {
         queue.async { [weak self] in
-            self?.recorder?.captureApplied(.autocorrect(text))
+            self?.activeRecorder?.captureApplied(.autocorrect(text))
         }
     }
 
@@ -486,7 +607,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// can count how often the guard fires in the wild. No-op unless armed.
     func noteRecordedStaleAutocorrectSkip(_ text: String) {
         queue.async { [weak self] in
-            self?.recorder?.captureApplied(.staleSkip(text))
+            self?.activeRecorder?.captureApplied(.staleSkip(text))
         }
     }
 
@@ -494,7 +615,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// unless a session is armed.
     func noteRecordedSuggestionTap(_ text: String) {
         queue.async { [weak self] in
-            self?.recorder?.captureApplied(.suggestionTap(text))
+            self?.activeRecorder?.captureApplied(.suggestionTap(text))
         }
     }
 
@@ -505,7 +626,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// unless a session is armed.
     func noteRecordedLiteralRevert(_ text: String) {
         queue.async { [weak self] in
-            self?.recorder?.captureApplied(.literalRevert(text))
+            self?.activeRecorder?.captureApplied(.literalRevert(text))
         }
     }
 
@@ -772,19 +893,6 @@ final class LyklabordAutocompleteService: AutocompleteService {
                 NSLog("[LyklaborÃ°] bin-morph.bin missing from extension bundle; continuing without morphology")
             }
 
-            let engine = TypeEngine(
-                icelandic: icelandic,
-                english: english,
-                morphology: morphology,
-                icelandicCalibration: icelandicCalibration,
-                englishCalibration: englishCalibration
-            )
-            // Touch representative pages of the mmap-ed artifacts (spread
-            // unigram/bigram/morphology lookups) so the first real
-            // keystrokes don't pay page-fault costs (PLAN.md cold-start
-            // quirk). Runs on this queue, before the session is published.
-            engine.warmUp()
-            self.engine = engine
             // Curated supplementary vocabulary (free base "head of the long
             // tail"): load once from the bundled resource and inject it as the
             // baseline personal vocabulary. This runs BEFORE personal-learning
@@ -805,15 +913,16 @@ final class LyklabordAutocompleteService: AutocompleteService {
             } else {
                 NSLog("[LyklaborÃ°] Icelandic emoji suggestion index missing; emoji suggestions stay off")
             }
-            engine.setPersonalVocabulary(combinedVocabulary(personal: nil))
-            // Personal learning (M2): resolve the App Group container and
-            // load the personal snapshot. Fully graceful — no container,
-            // no model file, or a corrupt file all degrade to a nil
-            // snapshot + no event logging.
-            setupPersonalLearning()
-            let newSession = TypingSession(engine: engine)
-            newSession.fieldKind = fieldKind
-            session = newSession
+
+            let artifacts = LoadedArtifacts(
+                icelandic: icelandic,
+                english: english,
+                morphology: morphology,
+                icelandicCalibration: icelandicCalibration,
+                englishCalibration: englishCalibration
+            )
+            self.artifacts = artifacts
+            buildEngine(from: artifacts, warmingUp: true)
             coldStartTracker.engineReady()
             let ms = (AutocompleteColdStartTracker.now - start) * 1000
             let totalMs = (AutocompleteColdStartTracker.now - serviceCreatedAt) * 1000
@@ -840,6 +949,42 @@ final class LyklabordAutocompleteService: AutocompleteService {
         }
     }
 
+    /// Construct the engine and session for the currently selected language.
+    /// Called at bootstrap and again whenever the mode key changes language;
+    /// on the second path the artifacts are already mapped and warm, so the
+    /// only real work is rebuilding the (cheap) model/corrector/predictor
+    /// wrappers and reloading the language's personal store.
+    private func buildEngine(from artifacts: LoadedArtifacts, warmingUp: Bool) {
+        var config = EngineConfig()
+        config.pinnedLanguage = keyboardMode.language.pinned
+        let engine = TypeEngine(
+            icelandic: artifacts.icelandic,
+            english: artifacts.english,
+            morphology: artifacts.morphology,
+            config: config,
+            icelandicCalibration: artifacts.icelandicCalibration,
+            englishCalibration: artifacts.englishCalibration
+        )
+        if warmingUp {
+            // Touch representative pages of the mmap-ed artifacts (spread
+            // unigram/bigram/morphology lookups) so the first real
+            // keystrokes don't pay page-fault costs (PLAN.md cold-start
+            // quirk). Runs on this queue, before the session is published.
+            engine.warmUp()
+        }
+        if let loadedInflection { engine.setInflection(loadedInflection) }
+        self.engine = engine
+        engine.setPersonalVocabulary(combinedVocabulary(personal: nil))
+        // Personal learning (M2): resolve the App Group container and load
+        // the personal snapshot for this language. Fully graceful — no
+        // container, no model file, or a corrupt file all degrade to a nil
+        // snapshot + no event logging.
+        setupPersonalLearning()
+        let newSession = TypingSession(engine: engine)
+        newSession.fieldKind = fieldKind
+        session = newSession
+    }
+
     // MARK: - Personal learning (on `queue`)
 
     /// Resolve the App Group container and do the initial snapshot load.
@@ -848,17 +993,50 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// flush becomes a silent drop — no crash, no retry storm.
     private func setupPersonalLearning() {
         guard let appGroupId else { return }
-        guard
-            let container = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: appGroupId
-            )
-        else {
+        let container =
+            appGroupContainerURL
+            ?? FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupId)
+        guard let container else {
             NSLog("[LyklaborÃ°] App Group container unavailable; personal learning off")
             return
         }
-        personalModelURL = container.appendingPathComponent(Self.personalModelFileName)
-        eventLogURL = container.appendingPathComponent(Self.learningEventLogFileName)
+        appGroupContainerURL = container
+        migrateLegacyLearningStoreIfNeeded(in: container)
+        // Per-language stores (see Learning.LearningLanguage): nothing the
+        // user teaches the keyboard in one language can surface in the other.
+        let language = keyboardMode.language
+        personalModelURL = container.appendingPathComponent(language.personalModelFileName)
+        eventLogURL = container.appendingPathComponent(language.eventLogFileName)
         reloadPersonalSnapshotIfChanged()
+    }
+
+    /// Split a pre-language-separation store, once per process.
+    ///
+    /// The app runs the same migration on launch, but it cannot be the only
+    /// one to: a user who updates and keeps typing without opening the app
+    /// would otherwise find the keyboard reading an empty per-language store
+    /// while everything it ever learned sat in `personal-model.json`. Both
+    /// callers go through `LearningStoreMigration`, which is idempotent and
+    /// coordinated on the legacy log, so whichever runs first wins and the
+    /// other sees nothing left to do.
+    private func migrateLegacyLearningStoreIfNeeded(in container: URL) {
+        guard !hasCheckedLegacyLearningStore else { return }
+        hasCheckedLegacyLearningStore = true
+        do {
+            let summary = try LearningStoreMigration.runCoordinated(in: container)
+            guard summary.migrated else { return }
+            NSLog(
+                "[LyklaborÃ°] split legacy personal store (is: %d words, en: %d words)",
+                summary.wordCounts[.icelandic] ?? 0,
+                summary.wordCounts[.english] ?? 0
+            )
+        } catch {
+            NSLog(
+                "[LyklaborÃ°] legacy personal store migration failed: %@",
+                String(describing: error)
+            )
+        }
     }
 
     /// Lyklaborð+ gate (the extension side of the entitlement flow). The
@@ -981,6 +1159,11 @@ final class LyklabordAutocompleteService: AutocompleteService {
     private func flushLearningEventsOnQueue() {
         guard let session, session.hasPendingLearningEvents else { return }
         let events = session.drainLearningEvents()
+        // Incognito: drain the buffer (so nothing accumulates to be written
+        // the moment the mode is left) and discard it. Reads are untouched —
+        // the personal store still ranks and protects words as usual, this
+        // only stops anything typed here from being remembered.
+        guard !keyboardMode.isIncognito else { return }
         guard let eventLogURL else { return }  // no App Group: drop silently
         // Belt-and-braces: the session only buffers in standard fields, so
         // this assertion firing would mean the session-side gate broke.
@@ -1055,7 +1238,11 @@ final class LyklabordAutocompleteService: AutocompleteService {
             }
             let loadMs = (CFAbsoluteTimeGetCurrent() - start) * 1000
             self.queue.async { [weak self] in
-                guard let self, let engine = self.engine else { return }
+                guard let self else { return }
+                // Retained so a language switch can re-inject it into the
+                // rebuilt engine rather than paying the governors parse again.
+                self.loadedInflection = model
+                guard let engine = self.engine else { return }
                 engine.setInflection(model)
                 let after = Self.memoryFootprintMB()
                 NSLog(
@@ -1107,7 +1294,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
         // DEV-MODE recorder: one flag check; writes a JSONL line ONLY when a
         // session is armed and the field is standard. Off by default, and
         // entirely independent of the learning event log below.
-        recorder?.recordPass(
+        activeRecorder?.recordPass(
             window: text, fieldKind: fieldKind, suggestions: suggestions,
             pIcelandic: session.probabilityIcelandic)
         setRevertMemoArmed(session.hasPendingContinuationRevert)
