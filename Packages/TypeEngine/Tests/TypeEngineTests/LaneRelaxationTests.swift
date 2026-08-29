@@ -466,10 +466,16 @@ final class LaneRelaxationTests: XCTestCase {
     }
 
     func testLongPressPlumbingThroughSession() {
+        // The assertions read `isAutocorrect` as "acute-folding was vetoed",
+        // so the commit slot's arming is pinned off — it arms any non-word
+        // irrespective of folding and would mask the veto.
+        var config = EngineConfig()
+        config.armsRankedWinnerOnSpace = false
         let engine = TypeEngine(
             icelandic: DictLexicon(unigrams: icelandicWords, bigrams: icelandicBigrams),
             english: DictLexicon(unigrams: englishWords, bigrams: englishBigrams),
-            morphologyProvider: FakeMorphology(["for"])
+            morphologyProvider: FakeMorphology(["for"]),
+            config: config
         )
         let session = TypingSession(engine: engine)
         // Saturate the IS lane.

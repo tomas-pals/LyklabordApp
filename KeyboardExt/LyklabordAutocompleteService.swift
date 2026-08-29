@@ -1092,10 +1092,9 @@ final class LyklabordAutocompleteService: AutocompleteService {
         guard let session else {
             return .init(inputText: text, suggestions: [])
         }
-        // limit 4, not 3: the spacebar acts as a HOISTED SLOT for the armed
-        // autocorrect (blue key carries the word — see DevSpaceContent), so the
-        // bar filters that suggestion out and needs one extra candidate to keep
-        // three visible slots (LyklabordToolbar caps the un-armed bar at 3).
+        // limit 4, not 3: slot 0 is always the literal (the toolbar's icon
+        // button, see `LyklabordToolbar`), leaving three candidates for the
+        // commit slot and its two flanking alternatives.
         let suggestions = session.suggestions(for: text, limit: 4)
         let elapsedMs = (AutocompleteColdStartTracker.now - serviceCreatedAt) * 1000
         if !hasRecordedFirstAutocompletePass {
@@ -1124,11 +1123,11 @@ final class LyklabordAutocompleteService: AutocompleteService {
         // expansion as the TOP `.autocorrect` suggestion instead of proxy-
         // editing it in some delimiter hook. Riding the armed-autocorrect
         // machinery buys everything the hand-rolled path would have to
-        // reimplement: the space-commit apply (with the blue-spacebar
-        // hoisted-slot hint), the apply-time staleness guard (`bridge`
+        // reimplement: the space-commit apply (and the bar's commit slot
+        // showing it), the apply-time staleness guard (`bridge`
         // stamps `pendingTokenInfoKey` on this suggestion like any other),
-        // correct proxy-edit ledger attribution, and the verbatim
-        // escape-hatch slot staying available to keep the literal shortcut.
+        // correct proxy-edit ledger attribution, and the literal slot
+        // staying available to keep the shortcut as typed.
         //
         // Ordering/privacy note: injected AFTER `recorder.recordPass` above,
         // deliberately — the lexicon includes contact names, and an armed
@@ -1212,8 +1211,8 @@ final class LyklabordAutocompleteService: AutocompleteService {
     ///   suggestion when the user types a word delimiter (space-commit);
     ///   TypeEngine only sets `isAutocorrect` on its top candidate under
     ///   its conservatism rules, so the mapping is direct.
-    /// - The verbatim escape-hatch slot maps to `.unknown`, which native
-    ///   keyboards (and our toolbar, via the quoted `title`) render quoted.
+    /// - The literal slot maps to `.unknown`, which our toolbar renders as
+    ///   the leading icon button rather than a text chip.
     /// - `additionalDeleteCount` bridges the token-boundary difference:
     ///   TypeEngine suggestions replace the session's WHOLE pending token
     ///   (which can span dots/'@' — "profilmynd.tilvinstri", "teh."), while
@@ -1232,9 +1231,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
             type: suggestion.isVerbatim
                 ? .unknown
                 : (suggestion.isAutocorrect ? .autocorrect : .regular),
-            title: suggestion.isVerbatim
-                ? "\u{201C}\(suggestion.text)\u{201D}"
-                : suggestion.text,
+            title: suggestion.text,
             additionalDeleteCount:
                 max(pendingToken.count - kkWordCount, 0)
                 + literalRevertAdditionalDeleteCount,

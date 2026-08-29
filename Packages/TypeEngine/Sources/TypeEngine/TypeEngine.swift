@@ -230,6 +230,15 @@ public final class TypeEngine {
         model.personal.isValidWord(word)
     }
 
+    /// Whether a token the user actually typed counts as a real word —
+    /// attested in the active lexicon(s), BÍN-known, a productive compound,
+    /// personal-protected, or tombstoned. This is the "never auto-replace a
+    /// real word" predicate; `TypingSession` uses it to bound the commit
+    /// slot's arming (see `EngineConfig.armsRankedWinnerOnSpace`).
+    public func isValidTypedWord(_ word: String) -> Bool {
+        model.isValidTypedWord(word)
+    }
+
     /// Whether `word` is EJECTABLE own-learned personal vocabulary (wave 37
     /// long-press-to-forget): valid personal vocabulary (snapshot or session
     /// overlay), not tombstoned, and NOT otherwise valid — absent from

@@ -819,8 +819,16 @@ public final class TypingSession {
         let pendingDot = currentWord.hasSuffix(".")
         let stem = pendingDot ? String(currentWord.dropLast()) : currentWord
 
+        // Set by every rule below that forbids auto-applying a correction for
+        // this token. It gates the arming pass at the end of this method: when
+        // nothing may auto-apply, the bar's centre slot falls back to the
+        // literal and space is just a space.
+        var autocorrectForbidden = false
+
         var engineSuggestions: [Suggestion] = []
         if Self.isVerbatimClassToken(stem) {
+            // URLs, e-mails, file.ext, "e.g." — tap-only by definition.
+            autocorrectForbidden = true
             // Dotted/@ token (URL, domain, e-mail, file.ext, e.g.): never
             // auto-corrected. The dot-free trailing segment may still get
             // suggestions, tap-only, mapped back onto the full token.
@@ -918,6 +926,8 @@ public final class TypingSession {
             engineSuggestions.removeAll { suggestion in
                 !suggestion.text.allSatisfy { $0.isNumber || ".,:".contains($0) }
             }
+            // A number in progress is never rewritten on space either.
+            autocorrectForbidden = true
         }
 
         // Lane-relaxation field gate (PLAN.md invariant "URL/email/secure
@@ -934,6 +944,7 @@ public final class TypingSession {
         if fieldKind.suppressesAutocorrect || verbatimChoice == currentWord
             || verbatimChoice == stem
         {
+            autocorrectForbidden = true
             if engineSuggestions.contains(where: \.isAutocorrect) {
                 trace?.note(
                     fieldKind.suppressesAutocorrect
@@ -969,6 +980,7 @@ public final class TypingSession {
         // reasoning if a host ever produced it — the set below covers the
         // three openers iOS smart punctuation / the IS layout actually emit.
         if Self.isQuotedTermContext(context) {
+            autocorrectForbidden = true
             if engineSuggestions.contains(where: \.isAutocorrect) {
                 trace?.note("auto-apply flag stripped: quoted term (opening quote before token)")
             }
@@ -1008,14 +1020,48 @@ public final class TypingSession {
             return Array(bar.prefix(limit))
         }
 
-        // Verbatim escape-hatch slot (layer 1): the literal typed token
-        // always leads the bar — unless it IS the top engine suggestion
-        // (no duplicate).
-        if engineSuggestions.first?.text != currentWord {
-            bar.append(
-                Suggestion(text: currentWord, isAutocorrect: false, confidence: 0, isVerbatim: true)
-            )
+        // Commit-slot arming. The keyboard's contract is that the bar's centre
+        // slot IS the word space commits, so the centre must be populated
+        // whenever a correction is permitted at all — otherwise space has
+        // nothing to apply and the slot lies about what it will do.
+        //
+        // `AutocorrectPolicy` is deliberately conservative: it declines
+        // whenever the typed token is defensible (valid in either language,
+        // thin margin over the runner-up). That conservatism was calibrated
+        // for a bar where declining simply meant "no blue spacebar". With the
+        // centre slot it would instead mean "space does nothing", so when
+        // `config.armsRankedWinnerOnSpace` is set the ranked winner is armed
+        // even where the policy declined — the winner already beat the literal
+        // on the engine's own score, and the literal stays one tap away in the
+        // dedicated literal slot.
+        //
+        // The suppression rules above are NOT overridden: verbatim-class
+        // tokens, URL/e-mail/secure/search fields, numbers, quoted terms and
+        // the user's own verbatim choice all keep space inert. Neither is the
+        // load-bearing one — a token that is itself a real word (lexicon,
+        // BÍN, compound, personal, tombstoned) is never replaced, however the
+        // ranking came out. Aggressive means "correct anything that isn't a
+        // word", not "overwrite words you meant to type".
+        if engine.config.armsRankedWinnerOnSpace,
+            !autocorrectForbidden,
+            !engineSuggestions.contains(where: \.isAutocorrect),
+            !engine.isValidTypedWord(stem),
+            let winner = engineSuggestions.first,
+            winner.text != currentWord,
+            !winner.isVerbatim
+        {
+            trace?.note("commit slot armed: ranked winner \(winner.text) (policy declined)")
+            engineSuggestions[0] = winner.armingAutocorrect()
         }
+
+        // Literal slot (layer 1): the byte-exact typed token, always present
+        // and always first. The toolbar renders it as a dedicated icon button
+        // rather than a text chip, so unlike the old quoted escape-hatch chip
+        // it costs no candidate slot and never duplicates a visible word —
+        // hence no "skip when it equals the top suggestion" dedup.
+        bar.append(
+            Suggestion(text: currentWord, isAutocorrect: false, confidence: 0, isVerbatim: true)
+        )
         bar.append(contentsOf: engineSuggestions)
         return Self.titleCaseNameSuggestions(Array(bar.prefix(limit)), context: context)
     }

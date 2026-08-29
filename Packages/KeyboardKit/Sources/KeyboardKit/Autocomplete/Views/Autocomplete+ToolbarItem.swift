@@ -183,15 +183,17 @@ public extension Autocomplete.ToolbarItemStyle {
     /// The autocomplete toolbar style for the space-committable
     /// (autocorrect-armed) candidate.
     ///
-    /// FORK NOTE (Lyklaborð — issue #1 v2): the space-commit affordance moved
-    /// off the bar and onto the SPACEBAR itself (blue key showing the word it
-    /// will commit — DevSpaceContent + LyklabordStyleService in the extension),
-    /// which is where the action happens. The bar keeps upstream's subtle
-    /// emphasis (semibold + light wash) so it doesn't compete with the key.
+    /// FORK NOTE (Lyklaborð): this is the bar's CENTRE slot — the word the
+    /// spacebar will insert — so it is the loudest thing on the toolbar: a
+    /// filled accent chip rather than upstream's light wash. The affordance
+    /// lived on the spacebar itself for a while; a label under the thumb that
+    /// is about to press the key turned out to be the one place you cannot
+    /// read it.
     static var standardAutocorrect: Self {
         .init(
+            titleColor: .white,
             titleFont: .init(.body, .semibold),
-            backgroundColor: .white.opacity(0.5),
+            backgroundColor: .accentColor,
             backgroundCornerRadius: 4.5
         )
     }

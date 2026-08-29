@@ -103,6 +103,12 @@ final class KeyboardViewController: KeyboardInputViewController {
         // affordance guaranteed regardless of persisted state.
         state.keyboardContext.settings.spaceLongPressBehavior = .moveInputCursor
 
+        // No key-click sound. Haptics stay on their own switch
+        // (`isHapticFeedbackEnabled`, exposed in the app's settings) — these
+        // are independent gates in `StandardActionHandler`. Set every launch
+        // for the same @AppStorage-persistence reason as the line above.
+        state.feedbackContext.settings.isAudioFeedbackEnabled = false
+
         // M1: bilingual IS/EN autocomplete via TypeEngine. The service
         // bootstraps itself lazily on its own user-initiated serial queue (mmap
         // of bin-morph.bin + en.lex + is.lex happens off the main thread —
@@ -161,9 +167,9 @@ final class KeyboardViewController: KeyboardInputViewController {
         // after an autocorrect), which is harmless here — our service's
         // `ignoreWord` is a documented no-op.
         state.autocompleteContext.settings.isAutolearnEnabled = true
-        // Let the 4th candidate through the context cap: the bar shows at most
-        // three (LyklabordToolbar), but when an autocorrect is armed the
-        // spacebar hoists it and the bar backfills with the extra candidate.
+        // Let the 4th candidate through the context cap: slot 0 is the literal
+        // (rendered as the toolbar's icon button), leaving three for the
+        // commit slot and its two flanking alternatives.
         state.autocompleteContext.settings.suggestionsDisplayCount = 4
 
         // Verbatim escape hatch + URL handling (PLAN.md): our
@@ -291,27 +297,16 @@ final class KeyboardViewController: KeyboardInputViewController {
             // (space/backspace/shift/123/globe/return), not just the letter
             // rows.
             //
-            // SpaceCommitHintContainer: observed wrapper that injects the
-            // button-style ENVIRONMENT builder turning the spacebar blue while
-            // an autocorrect is armed — env changes re-render the keys in
-            // lockstep with the word label (a style-service override lagged one
-            // interaction; see DevSpaceContent).
-            SpaceCommitHintContainer(
-                autocompleteContext: controller.state.autocompleteContext,
-                keyboardContext: controller.state.keyboardContext
-            ) {
             KeyboardView(
                 state: controller.state,
                 services: controller.services,
-                // Spacebar signal surface (DevSpaceContent): armed autocorrect
-                // → the word space will commit (key turns blue via the
-                // SpaceCommitHintContainer env builder above); idle DEBUG →
-                // the extension's build commit. Release idle = standard "Bil".
+                // Custom key faces (currently the adaptive quote key). The
+                // spacebar keeps its standard "Bil" label: the word space
+                // commits is shown in the suggestion bar's centre slot.
                 buttonContent: { params in
-                    DevSpaceContent(
+                    LyklabordButtonContent(
                         action: params.item.action,
-                        standard: params.view,
-                        autocompleteContext: controller.state.autocompleteContext
+                        standard: params.view
                     )
                 },
                 buttonView: { params in
@@ -346,8 +341,8 @@ final class KeyboardViewController: KeyboardInputViewController {
                         }
                     )
                 },
-                // Autocomplete toolbar with the frecency empty state and the
-                // spacebar hoisted-slot filtering. See `LyklabordToolbar`.
+                // Autocomplete toolbar: literal button + three fixed slots,
+                // with the frecency empty state. See `LyklabordToolbar`.
                 toolbar: { params in
                     LyklabordToolbar(
                         autocompleteContext: controller.state.autocompleteContext,
@@ -412,7 +407,6 @@ final class KeyboardViewController: KeyboardInputViewController {
                         )
                     }
             )
-            } // SpaceCommitHintContainer
         }
     }
 }

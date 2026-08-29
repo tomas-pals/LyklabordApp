@@ -289,7 +289,14 @@ final class TouchDecodingTests: XCTestCase {
 
     // MARK: - Session alignment + emission
 
+    /// These tests read the `isAutocorrect` flag as a proxy for "the spatial
+    /// channel accepted a boundary-tap claim", so they pin the commit slot's
+    /// arming off: with it on, every non-word arms regardless of the taps and
+    /// the flag stops discriminating. `TypingSessionTests` covers the arming
+    /// layer itself.
     func sessionFixture() -> (session: TypingSession, engine: TypeEngine) {
+        var config = EngineConfig()
+        config.armsRankedWinnerOnSpace = false
         let engine = TypeEngine(
             icelandic: Fixtures.icelandic,
             english: DictLexicon(
@@ -299,7 +306,8 @@ final class TouchDecodingTests: XCTestCase {
                 ],
                 bigrams: [:]
             ),
-            morphologyProvider: nil
+            morphologyProvider: nil,
+            config: config
         )
         return (TypingSession(engine: engine), engine)
     }

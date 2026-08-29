@@ -1010,6 +1010,29 @@ public struct EngineConfig: Sendable {
     /// lexicon completions() range scan).
     public var diacriticCompletionMaxLookups: Int = 24
 
+    // --- Commit slot
+
+    /// Arm the ranked winner as the space-commit candidate even where
+    /// `AutocorrectPolicy` declined, as long as no hard suppression rule
+    /// applies (verbatim-class token, URL/e-mail/secure/search field, number,
+    /// quoted term, the user's own verbatim choice). See the arming pass in
+    /// `TypingSession.buildSuggestions` for why the bar's centre slot needs
+    /// this. Set false to get the pre-commit-slot conservatism back, which is
+    /// what the policy's own unit tests assert against.
+    public var armsRankedWinnerOnSpace: Bool = true
+
+    /// Language the engine draws vocabulary from. `nil` keeps the historical
+    /// bilingual blend (both lexicons, weighted by the running lane
+    /// posterior); a concrete value restricts every candidate source,
+    /// probability and prediction to that one lexicon. See
+    /// `BlendedLanguageModel.activeLanguage`.
+    public var pinnedLanguage: PinnedLanguage?
+
+    public enum PinnedLanguage: String, Codable, Sendable, CaseIterable {
+        case icelandic
+        case english
+    }
+
     // --- Two-lane language switching model (PLAN.md "Bilingual blending —
     // lane model"). The posterior P(IS) is the forward probability of a
     // two-state (IS/EN) HMM over committed words: per commit,

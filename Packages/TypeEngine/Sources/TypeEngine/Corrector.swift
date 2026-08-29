@@ -70,6 +70,19 @@ public struct Suggestion: Equatable, Sendable {
             isPersonalLearned: true
         )
     }
+
+    /// A copy flagged as the commit slot — the candidate space applies. All
+    /// other fields are preserved byte-for-byte.
+    func armingAutocorrect() -> Suggestion {
+        Suggestion(
+            text: text,
+            isAutocorrect: true,
+            confidence: confidence,
+            isVerbatim: isVerbatim,
+            isRestoration: isRestoration,
+            isPersonalLearned: isPersonalLearned
+        )
+    }
 }
 
 /// Result of correcting a single typed word.

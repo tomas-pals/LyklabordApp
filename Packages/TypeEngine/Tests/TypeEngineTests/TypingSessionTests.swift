@@ -229,6 +229,96 @@ final class TypingSessionTests: XCTestCase {
         XCTAssertFalse(bar.contains { $0.isAutocorrect })
     }
 
+    // MARK: - Commit slot (space always applies the bar's centre)
+
+    /// A conservative-policy engine: `armsRankedWinnerOnSpace` off. Used to
+    /// show that a case only auto-applies BECAUSE of the arming pass.
+    private func conservativeSession() -> TypingSession {
+        var config = EngineConfig()
+        config.armsRankedWinnerOnSpace = false
+        return TypingSession(engine: Fixtures.engine(config: config))
+    }
+
+    func testLiteralSlotLeadsEveryBarAndNothingIsArmedForARealWord() {
+        // A real word produces alternatives only — the engine never re-offers
+        // the typed token — so nothing is armed and the toolbar's centre slot
+        // falls back to the literal. Space then just inserts a space.
+        let bar = typeThrough(session(), "hestur", limit: 4)
+        XCTAssertEqual(bar.first?.text, "hestur")
+        XCTAssertEqual(bar.first?.isVerbatim, true)
+        XCTAssertEqual(bar.filter(\.isVerbatim).count, 1)
+        XCTAssertFalse(bar.contains { $0.isAutocorrect })
+        XCTAssertEqual(bar.dropFirst().map(\.text), ["hesti", "hestar"])
+    }
+
+    func testLiteralSlotSurvivesEvenWithNoAlternativesAtAll() {
+        let bar = typeThrough(session(), "takk", limit: 4)
+        XCTAssertEqual(bar.map(\.text), ["takk"])
+        XCTAssertEqual(bar.first?.isVerbatim, true)
+    }
+
+    func testNonWordArmsTheRankedWinnerEvenWhenThePolicyDeclines() throws {
+        // "hestr" is not a word in any lexicon, so the ranked winner is armed
+        // and space commits it — the aggressive half of the commit slot.
+        let armed = typeThrough(session(), "hestr")
+        let winner = try XCTUnwrap(armed.first(where: { !$0.isVerbatim }))
+        XCTAssertEqual(winner.text, "hestur")
+        XCTAssertTrue(winner.isAutocorrect)
+    }
+
+    func testRealWordIsNeverArmedAwayHoweverTheRankingCameOut() {
+        // "vetur" and "veður" are both real and one outranks the other; a
+        // token that is itself valid vocabulary must never be replaced.
+        for word in ["vetur", "veður", "gott", "hestur"] {
+            let bar = typeThrough(session(), word)
+            XCTAssertFalse(
+                bar.contains { $0.isAutocorrect },
+                "\(word) is a real word and must not be auto-replaced")
+        }
+    }
+
+    func testArmingRespectsEveryHardSuppressionRule() {
+        for kind in [FieldKind.url, .email, .webSearch, .secure] {
+            let s = session()
+            s.fieldKind = kind
+            XCTAssertFalse(
+                typeThrough(s, "hestr").contains { $0.isAutocorrect },
+                "\(kind) must keep space inert")
+        }
+
+        // Verbatim choice memo.
+        let chosen = session()
+        typeThrough(chosen, "hestr")
+        chosen.noteVerbatimChoice("hestr")
+        XCTAssertFalse(chosen.suggestions(for: "hestr").contains { $0.isAutocorrect })
+
+        // Quoted term.
+        let quoted = session()
+        XCTAssertFalse(
+            quoted.suggestions(for: "hann sagði „hestr").contains { $0.isAutocorrect })
+
+        // Dotted / verbatim-class token.
+        let dotted = session()
+        XCTAssertFalse(dotted.suggestions(for: "hestr.is").contains { $0.isAutocorrect })
+
+        // Number in progress.
+        let numeric = session()
+        XCTAssertFalse(numeric.suggestions(for: "21.000").contains { $0.isAutocorrect })
+    }
+
+    func testArmingOverridesThePolicysCrossLanguageAmbiguityVeto() throws {
+        // "greep" sits between the fixture's synthetic twins "greeþ" (IS) and
+        // "green" (EN). The policy declines on that ambiguity; "greep" is
+        // still not a word, so the commit slot arms the ranked winner anyway.
+        XCTAssertFalse(
+            typeThrough(conservativeSession(), "greep").contains { $0.isAutocorrect },
+            "the conservative policy declines this one")
+
+        let bar = typeThrough(session(), "greep")
+        let armed = try XCTUnwrap(bar.first(where: \.isAutocorrect))
+        XCTAssertEqual(armed.text, "greeþ")
+    }
+
     // MARK: - Field-type gate (layer 2)
 
     func testURLFieldSuppressesAutocorrectButKeepsSuggestions() {
