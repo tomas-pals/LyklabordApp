@@ -21,6 +21,14 @@ import Foundation
 ///   reads it directly; today the extension gets model data via its own
 ///   loaded copy, so plain atomic writes suffice there).
 /// - Never cache file descriptors or `Data` across coordination blocks.
+///
+/// Linux has neither `NSFileCoordinator` nor App Groups. The `#if` below
+/// keeps the Darwin implementation byte-identical and degrades the Linux
+/// build to a direct passthrough so the package (and everything downstream
+/// of it — `TypeEngine`, `type-repl`, `type-eval`) compiles and tests on a
+/// non-Apple host. Nothing that ships to a device takes the passthrough.
+#if canImport(Darwin)
+
 public enum CoordinatedFileAccess {
     /// Coordinated read. `accessor` receives the URL to actually read from
     /// (which may differ from `url` while another process moves the file).
@@ -69,3 +77,35 @@ public enum CoordinatedFileAccess {
         return try result.get()
     }
 }
+
+#else
+
+public enum CoordinatedFileAccess {
+    public struct ReadingOptions: OptionSet, Sendable {
+        public let rawValue: UInt
+        public init(rawValue: UInt) { self.rawValue = rawValue }
+    }
+
+    public struct WritingOptions: OptionSet, Sendable {
+        public let rawValue: UInt
+        public init(rawValue: UInt) { self.rawValue = rawValue }
+    }
+
+    public static func coordinateRead<T>(
+        at url: URL,
+        options: ReadingOptions = [],
+        byAccessor accessor: (URL) throws -> T
+    ) throws -> T {
+        try accessor(url)
+    }
+
+    public static func coordinateWrite<T>(
+        at url: URL,
+        options: WritingOptions = [],
+        byAccessor accessor: (URL) throws -> T
+    ) throws -> T {
+        try accessor(url)
+    }
+}
+
+#endif

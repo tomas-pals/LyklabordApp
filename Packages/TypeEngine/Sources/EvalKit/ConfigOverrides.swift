@@ -250,6 +250,12 @@ public enum ConfigOverrides {
     }
 
     private static func isBoolNumber(_ number: NSNumber) -> Bool {
-        CFGetTypeID(number) == CFBooleanGetTypeID()
+        #if canImport(Darwin)
+            return CFGetTypeID(number) == CFBooleanGetTypeID()
+        #else
+            // swift-corelibs-foundation bridges JSON booleans to an NSNumber
+            // whose objCType is the C `char` encoding, same as Darwin.
+            return String(cString: number.objCType) == "c"
+        #endif
     }
 }

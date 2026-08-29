@@ -3,7 +3,15 @@ import XCTest
 
 @testable import EvalKit
 
+/// The audit verifies shipped artifact digests, so it needs CryptoKit — this
+/// whole suite is a release-machine (Apple host) concern.
 final class LanguageArtifactAuditTests: XCTestCase {
+    override func setUpWithError() throws {
+        #if !canImport(CryptoKit)
+            throw XCTSkip("artifact digests need CryptoKit")
+        #endif
+    }
+
     func testCurrentRepositoryManifestsAndHashesPass() throws {
         guard let root = ArtifactLoader.repoRoot() else {
             throw XCTSkip("repo root unavailable")

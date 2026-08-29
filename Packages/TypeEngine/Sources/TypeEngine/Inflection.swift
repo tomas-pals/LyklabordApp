@@ -1,4 +1,6 @@
-import Compression
+#if canImport(Compression)
+    import Compression
+#endif
 import Foundation
 import Learning
 import LemmaCore
@@ -383,6 +385,10 @@ public struct GovernorsModel: Sendable {
         case malformedJSON
         case notGzip
         case corruptGzip
+        /// Non-Apple host without the Compression framework. The gzipped
+        /// governors artifact is a shipped-app concern; a Linux `swift test`
+        /// host exercises the engine through in-memory `GovernorsModel(table:)`.
+        case unsupportedPlatform
     }
 
     /// Minimal gzip (RFC 1952) decoder over the Compression framework:
@@ -396,7 +402,10 @@ public struct GovernorsModel: Sendable {
     static func withGunzipped<R>(
         _ data: Data, _ body: (UnsafeRawBufferPointer) throws -> R
     ) throws -> R {
-        try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> R in
+        #if !canImport(Compression)
+            throw GovernorsModelError.unsupportedPlatform
+        #else
+        return try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> R in
             let bytes = raw.bindMemory(to: UInt8.self)
             guard bytes.count > 18, bytes[0] == 0x1F, bytes[1] == 0x8B, bytes[2] == 8 else {
                 throw GovernorsModelError.notGzip
@@ -444,6 +453,7 @@ public struct GovernorsModel: Sendable {
             guard decoded == uncompressedSize else { throw GovernorsModelError.corruptGzip }
             return try body(UnsafeRawBufferPointer(start: destination, count: uncompressedSize))
         }
+        #endif
     }
 
     /// Test convenience: gunzip to a Data (small fixtures only — copies).

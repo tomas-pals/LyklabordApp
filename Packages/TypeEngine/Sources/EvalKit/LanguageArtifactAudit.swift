@@ -1,4 +1,6 @@
-import CryptoKit
+#if canImport(CryptoKit)
+    import CryptoKit
+#endif
 import Foundation
 import TypeEngine
 
@@ -125,14 +127,26 @@ public enum LanguageArtifactAudit {
             verifiedFileCount: verifiedFiles)
     }
 
+    /// Digest of an artifact file. CryptoKit is Apple-only; the audit is a
+    /// build-tooling concern that runs on the release machine, so a non-Apple
+    /// host reports the digest as unavailable rather than pulling in a
+    /// crypto dependency for it.
     public static func sha256(_ url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while let chunk = try handle.read(upToCount: 1_048_576), !chunk.isEmpty {
-            hasher.update(data: chunk)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        #if !canImport(CryptoKit)
+            throw LanguageArtifactAuditError.digestUnavailableOnThisPlatform
+        #else
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            var hasher = SHA256()
+            while let chunk = try handle.read(upToCount: 1_048_576), !chunk.isEmpty {
+                hasher.update(data: chunk)
+            }
+            return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        #endif
+    }
+
+    public enum LanguageArtifactAuditError: Error {
+        case digestUnavailableOnThisPlatform
     }
 
     private static func collectFileRecords(

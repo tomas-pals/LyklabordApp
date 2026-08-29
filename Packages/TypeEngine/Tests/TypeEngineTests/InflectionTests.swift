@@ -404,11 +404,15 @@ final class InflectionTests: XCTestCase {
     }
 
     private func requireRealGovernors() throws -> GovernorsModel {
-        let url = Self.realArtifactURL("governors.json.gz")
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            throw XCTSkip("data/is/governors.json.gz not present in this checkout")
-        }
-        return try GovernorsModel(gzippedJSONContentsOf: url)
+        #if !canImport(Compression)
+            throw XCTSkip("gunzip needs the Compression framework")
+        #else
+            let url = Self.realArtifactURL("governors.json.gz")
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw XCTSkip("data/is/governors.json.gz not present in this checkout")
+            }
+            return try GovernorsModel(gzippedJSONContentsOf: url)
+        #endif
     }
 
     func testRealGovernorsKnownPrepositionSignatures() throws {
@@ -440,6 +444,9 @@ final class InflectionTests: XCTestCase {
     }
 
     func testRealGovernorsLoadFootprintIsCompact() throws {
+        #if !canImport(Darwin)
+            throw XCTSkip("phys_footprint accounting is Mach-only")
+        #else
         let url = Self.realArtifactURL("governors.json.gz")
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw XCTSkip("data/is/governors.json.gz not present in this checkout")
@@ -454,18 +461,21 @@ final class InflectionTests: XCTestCase {
         // NOT stay dirty (mmap+munmap discipline — see withGunzipped).
         // Generous slack for allocator noise.
         XCTAssertLessThan(delta, 8, "governors load must not retain the decompression buffer")
+        #endif
     }
 
-    static func memoryFootprint() -> UInt64 {
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(
-            MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
-        let kr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+    #if canImport(Darwin)
+        static func memoryFootprint() -> UInt64 {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(
+                MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+            let kr = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                }
             }
+            guard kr == KERN_SUCCESS else { return 0 }
+            return UInt64(info.phys_footprint)
         }
-        guard kr == KERN_SUCCESS else { return 0 }
-        return UInt64(info.phys_footprint)
-    }
+    #endif
 }
