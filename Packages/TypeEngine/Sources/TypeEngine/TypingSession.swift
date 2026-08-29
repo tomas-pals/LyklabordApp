@@ -1517,6 +1517,14 @@ public final class TypingSession {
     /// the word itself says, or a sletta typed in a strong lane would be
     /// mislabeled and later feed wrong lane statistics back.
     private func languageHint(for word: String) -> LanguageHint {
+        // A pinned language is a statement of fact from the user, so it wins
+        // over inference. It also keeps the hint honest once the other
+        // lexicon is empty, which would otherwise skew every margin.
+        switch engine.config.pinnedLanguage {
+        case .icelandic: return .icelandic
+        case .english: return .english
+        case nil: break
+        }
         let evidence = engine.laneDiagnostics(for: word).evidence
         if evidence > 0 { return .icelandic }
         if evidence < 0 { return .english }

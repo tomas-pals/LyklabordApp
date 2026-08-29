@@ -1413,9 +1413,31 @@ final class ContinuationProposalCache {
 /// probabilities per language, calibrated per lexicon and blended by the
 /// running language posterior.
 struct BlendedLanguageModel {
-    let icelandic: Lexicon
-    let english: Lexicon
-    let morphology: MorphologyProviding?
+    /// Language separation (`EngineConfig.pinnedLanguage`). Pinning swaps the
+    /// OTHER language's lexicon for an empty one and, in English, drops BÍN
+    /// morphology. Everything downstream — candidate admission, the beam
+    /// decoder, scoring, prediction, lane evidence — reads vocabulary through
+    /// these three properties, so hard separation needs no per-consumer
+    /// awareness of the mode: the other language simply has no words.
+    ///
+    /// Calibration is deliberately NOT emptied: the z-scores that rank the
+    /// active language are measured against its real corpus, and that
+    /// measurement is taken in `init` from the real lexicons below.
+    var icelandic: Lexicon {
+        config.pinnedLanguage == .english ? Self.noVocabulary : icelandicLexicon
+    }
+    var english: Lexicon {
+        config.pinnedLanguage == .icelandic ? Self.noVocabulary : englishLexicon
+    }
+    var morphology: MorphologyProviding? {
+        config.pinnedLanguage == .english ? nil : morphologyProvider
+    }
+
+    private static let noVocabulary = EmptyLexicon()
+
+    private let icelandicLexicon: Lexicon
+    private let englishLexicon: Lexicon
+    private let morphologyProvider: MorphologyProviding?
     let config: EngineConfig
     let icelandicCalibration: LexiconCalibration
     let englishCalibration: LexiconCalibration
@@ -1450,9 +1472,9 @@ struct BlendedLanguageModel {
         inflection: InflectionStore = InflectionStore(),
         touch: TouchModelStore = TouchModelStore()
     ) {
-        self.icelandic = icelandic
-        self.english = english
-        self.morphology = morphology
+        self.icelandicLexicon = icelandic
+        self.englishLexicon = english
+        self.morphologyProvider = morphology
         self.config = config
         self.personal = personal
         self.inflection = inflection

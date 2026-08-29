@@ -100,7 +100,7 @@ public final class TypeEngine {
         self.model = model
         self.corrector = Corrector(model: model, config: config)
         self.predictor = Predictor(model: model, config: config)
-        self.probabilityIcelandic = 0.5
+        self.probabilityIcelandic = Self.initialPosterior(for: config)
     }
 
     /// Exact values used by the current engine. Build tooling uses this to
@@ -502,6 +502,10 @@ public final class TypeEngine {
     /// emissions: they only apply the predict step, i.e. a gentle decay of
     /// the lane toward neutral — never a drag toward either language.
     public func confirmWord(_ word: String) {
+        // Pinned to one language: there is no lane to infer. The posterior
+        // stays saturated so everything that reads it (fold pricing, quote
+        // style, score weighting) behaves as a confident lane.
+        guard config.pinnedLanguage == nil else { return }
         let w = word.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !w.isEmpty else { return }
 
@@ -519,6 +523,7 @@ public final class TypeEngine {
     /// does not reset. TypingSession calls this when a committed word's
     /// trailing delimiter is a sentence terminator.
     public func noteSentenceBoundary() {
+        guard config.pinnedLanguage == nil else { return }
         let decay = config.laneBoundaryDecay
         probabilityIcelandic = 0.5 + (probabilityIcelandic - 0.5) * (1 - decay)
     }
@@ -597,9 +602,21 @@ public final class TypeEngine {
     }
 
     /// Reset the lane posterior to the neutral 50/50 prior — the full-decay
-    /// case of the boundary relaxation (new text field, session reset).
+    /// case of the boundary relaxation (new text field, session reset). With
+    /// a pinned language it returns to the saturated value instead.
     public func resetLanguagePosterior() {
-        probabilityIcelandic = 0.5
+        probabilityIcelandic = Self.initialPosterior(for: config)
+    }
+
+    /// Starting lane posterior: neutral when blending, saturated toward the
+    /// pinned language otherwise (the clamp bounds, not 0/1, so the log-odds
+    /// arithmetic downstream stays finite).
+    static func initialPosterior(for config: EngineConfig) -> Double {
+        switch config.pinnedLanguage {
+        case .icelandic: config.posteriorCeiling
+        case .english: config.posteriorFloor
+        case nil: 0.5
+        }
     }
 
     // MARK: - Internals

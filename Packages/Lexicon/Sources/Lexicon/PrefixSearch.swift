@@ -92,6 +92,43 @@ extension PrefixSearchableLexicon {
     }
 }
 
+/// A lexicon that knows nothing. Substituted for the inactive language when
+/// the engine is pinned to a single one, so every consumer — candidate
+/// providers, the beam decoder, scoring, prediction — sees an empty
+/// vocabulary there without any of them needing to know about language modes.
+public struct EmptyLexicon: PrefixSearchableLexicon {
+    public init() {}
+
+    public func frequency(of word: String) -> UInt32? { nil }
+    public func bigramFrequency(_ first: String, _ second: String) -> UInt32? { nil }
+    public func completions(of prefix: String, limit: Int) -> [(word: String, frequency: UInt32)] {
+        []
+    }
+    public func continuations(of word: String, limit: Int) -> [(word: String, frequency: UInt32)] {
+        []
+    }
+    /// Not zero: this is a probability denominator, and callers divide by it.
+    public var totalUnigramTokens: UInt64 { 1 }
+
+    public func prefixRootCursor() -> LexiconPrefixCursor {
+        LexiconPrefixCursor(lowerBound: 0, upperBound: 0, byteDepth: 0)
+    }
+    public func descend(
+        _ cursor: LexiconPrefixCursor, appendingUTF8 bytes: [UInt8]
+    ) -> LexiconPrefixCursor {
+        LexiconPrefixCursor(
+            lowerBound: 0, upperBound: 0, byteDepth: cursor.byteDepth + bytes.count)
+    }
+    public func exactEntry(in cursor: LexiconPrefixCursor) -> (word: String, frequency: UInt32)? {
+        nil
+    }
+    public func childCursors(
+        of cursor: LexiconPrefixCursor, scanLimit: Int
+    ) -> [(character: Character, cursor: LexiconPrefixCursor)]? {
+        []
+    }
+}
+
 // MARK: - FrequencyLexicon conformance
 
 extension FrequencyLexicon: PrefixSearchableLexicon {
