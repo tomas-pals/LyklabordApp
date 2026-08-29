@@ -16,18 +16,26 @@ struct MemorySample {
     let physFootprintBytes: UInt64
 
     static func current() -> MemorySample {
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(
-            MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
-        let kr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+        #if !canImport(Darwin)
+            // Mach task_info is Apple-only; a Linux host builds the harness
+            // and reports no footprint rather than not building at all.
+            return MemorySample(residentBytes: 0, physFootprintBytes: 0)
+        #else
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(
+                MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+            let kr = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                }
             }
-        }
-        guard kr == KERN_SUCCESS else { return MemorySample(residentBytes: 0, physFootprintBytes: 0) }
-        // phys_footprint is what the iOS jetsam memory limit is enforced on.
-        return MemorySample(
-            residentBytes: info.resident_size, physFootprintBytes: UInt64(info.phys_footprint))
+            guard kr == KERN_SUCCESS else {
+                return MemorySample(residentBytes: 0, physFootprintBytes: 0)
+            }
+            // phys_footprint is what the iOS jetsam memory limit is enforced on.
+            return MemorySample(
+                residentBytes: info.resident_size, physFootprintBytes: UInt64(info.phys_footprint))
+        #endif
     }
 }
 

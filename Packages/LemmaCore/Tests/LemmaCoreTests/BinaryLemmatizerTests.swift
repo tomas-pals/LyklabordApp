@@ -91,7 +91,10 @@ final class BinaryLemmatizerTests: XCTestCase {
 
     // MARK: - Memory footprint (deliverable 4)
 
-    func testMemoryFootprintAfterLoadAndLookups() {
+    func testMemoryFootprintAfterLoadAndLookups() throws {
+        #if !canImport(Darwin)
+            throw XCTSkip("phys_footprint accounting is Mach-only")
+        #else
         let before = Self.memoryFootprint()
 
         let url = Bundle.module.url(forResource: "bin-morph.core.bin", withExtension: nil)!
@@ -130,18 +133,21 @@ final class BinaryLemmatizerTests: XCTestCase {
         XCTAssertLessThan(
             delta, 20 * 1024 * 1024,
             "load + 1000 lookups should not add >20MB footprint")
+        #endif
     }
 
-    static func memoryFootprint() -> (resident: UInt64, footprint: UInt64) {
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(
-            MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
-        let kr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+    #if canImport(Darwin)
+        static func memoryFootprint() -> (resident: UInt64, footprint: UInt64) {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(
+                MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+            let kr = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                }
             }
+            guard kr == KERN_SUCCESS else { return (0, 0) }
+            return (info.resident_size, UInt64(info.phys_footprint))
         }
-        guard kr == KERN_SUCCESS else { return (0, 0) }
-        return (info.resident_size, UInt64(info.phys_footprint))
-    }
+    #endif
 }
