@@ -199,9 +199,12 @@ final class KeyboardViewController: KeyboardInputViewController {
 
         // D2/D3 (docs/PUNCTUATION_BEHAVIOR.md): a period preceded by a digit is
         // an ordinal/decimal, not a sentence end — don't auto-cap the next word
-        // ("þann 21. mars" stays lowercase). Everything else is stock behavior.
+        // ("þann 21. mars" stays lowercase). Long-press backspace deletes
+        // words via the shared repeat timer (must be this instance — a
+        // fresh timer never starts, so stock's 3s word-switch never armed).
         services.keyboardBehavior = LyklabordKeyboardBehavior(
-            keyboardContext: state.keyboardContext
+            keyboardContext: state.keyboardContext,
+            repeatGestureTimer: services.repeatGestureTimer
         )
 
         // Adaptive quote key (issue #10): the numeric quote key's layout
