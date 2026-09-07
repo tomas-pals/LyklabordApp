@@ -141,6 +141,10 @@ final class KeyboardViewController: KeyboardInputViewController {
         // before the engine is built; this mirror catches up here so the key
         // renders the restored mode rather than flashing "ÍS".
         modeContext = KeyboardModeContext(service: autocompleteService)
+        autocompleteService.modeContext = modeContext
+        autocompleteService.onNeedsAutocompleteRefresh = { [weak self] in
+            self?.performAutocomplete()
+        }
         modeContext.refreshFromDefaults(appGroupId: KeyboardApp.lyklabord.appGroupId)
 
         // System text replacements (issue #5): iOS never auto-applies the
@@ -365,6 +369,7 @@ final class KeyboardViewController: KeyboardInputViewController {
                 toolbar: { params in
                     LyklabordToolbar(
                         autocompleteContext: controller.state.autocompleteContext,
+                        modeContext: self.modeContext,
                         actionHandler: controller.services.actionHandler,
                         suggestionAction: params.autocompleteAction,
                         standard: params.view
@@ -629,7 +634,10 @@ extension Callouts.Actions {
         // below) shows this cluster, period nearest/first since that's
         // the char under the finger. Overrides `Callouts.Actions.base`'s
         // stock "." -> ".…" mapping.
-        overrides[.character(".")] = ".,!?@#:;-".map { .character(char: $0) }
+        // Period under the finger, comma first to the left, then `?`.
+        // Quick flicks (see `PeriodFlick`) do not need this menu:
+        // left = `,`, right = `?`.
+        overrides[.character(".")] = ".,?!@#:;-".map { .character(char: $0) }
         actions.actionsDictionary.merge(overrides) { _, new in new }
         return actions
     }
@@ -881,6 +889,10 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
     /// different things here.
     private var didLongPressModeKey = false
 
+    /// Latest flick on the period key. Cleared on a fresh press; applied
+    /// on release so a quick left/right swipe inserts `,` / `?` instead of `.`.
+    private var periodFlick: PeriodFlick?
+
     init(
         controller: KeyboardController,
         emojiSearchSession: IcelandicEmojiSearchSession,
@@ -1064,9 +1076,9 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
         }
 
         // Mode key (ÍS / EN / huliðshamur). `.custom` has no standard action,
-        // so the behavior is entirely ours: tap cycles, long press toggles
-        // incognito without disturbing the language. It never edits the
-        // document, so it returns BEFORE the proxy-edit ledger snapshot
+        // so the behavior is entirely ours: tap flips ÍS ↔ EN, long press
+        // toggles incognito without disturbing the language. It never edits
+        // the document, so it returns BEFORE the proxy-edit ledger snapshot
         // rather than recording an empty edit — but it does refresh the bar,
         // since a language change rebuilds the engine underneath it (the
         // rebuild is already queued on the engine's serial queue, so the
@@ -1172,6 +1184,18 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
         // resolved character, and `replacementAction` below keeps KeyboardKit's
         // stock locale replacement away from quote characters entirely.
         var action = action
+        if case .character(".") = action {
+            switch gesture {
+            case .press:
+                periodFlick = nil
+            case .release:
+                if let flick = periodFlick {
+                    periodFlick = nil
+                    action = .character(flick.character)
+                }
+            default: break
+            }
+        }
         if gesture == .release, case .character(",") = action {
             let proxy = keyboardContext.textDocumentProxy
             let before = proxy.documentContextBeforeInput ?? ""
@@ -1358,6 +1382,25 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
             lyklabordAutocompleteService?.noteRecordedSuggestionTap(suggestion.text)
         }
         super.handle(suggestion)
+        // Always leave a trailing space after a bar tap (suggestion or
+        // manual/verbatim). KeyboardKit skips the insert when the proxy
+        // already reports an adjacent space — that check is stale often
+        // enough that the cursor lands glued to the next word.
+        let proxy = keyboardContext.textDocumentProxy
+        if proxy.documentContextBeforeInput?.hasSuffix(" ") != true {
+            proxy.insertText(" ")
+        }
+    }
+
+    override func handleDrag(
+        on action: KeyboardAction,
+        from startLocation: CGPoint,
+        to currentLocation: CGPoint
+    ) {
+        if action == .character(".") {
+            periodFlick = PeriodFlick.resolve(from: startLocation, to: currentLocation)
+        }
+        super.handleDrag(on: action, from: startLocation, to: currentLocation)
     }
 
     /// Apply-time staleness guard (wave #28) + DEV-MODE recorder hook.

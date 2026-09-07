@@ -330,6 +330,7 @@ targets:
       - path: KeyboardExt/IcelandicEmojiSearchFirewall.swift
       - path: KeyboardExt/EmojiCatalog.swift
       - path: KeyboardExt/LyklabordKeyboardMetrics.swift
+      - path: KeyboardExt/PeriodFlick.swift
     dependencies:
       - target: ReplayHost
       - package: KeyboardKit

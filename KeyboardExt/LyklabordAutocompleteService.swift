@@ -105,6 +105,13 @@ final class LyklabordAutocompleteService: AutocompleteService {
     // is unavailable (Full Access denied, simulator oddities): the engine
     // then runs with no personal model and no event logging — never a crash.
     private let appGroupId: String?
+    /// Main-thread mirror for the mode key and the wrong-language chip.
+    weak var modeContext: KeyboardModeContext?
+    /// Fired on the main thread after a language rebuild so the bar re-runs
+    /// against the new lexicon (same document text, new suggestions).
+    var onNeedsAutocompleteRefresh: (() -> Void)?
+    private var emailStore = EmailAddressStore()
+    private var emailStoreURL: URL?
     private var engine: TypeEngine?
     private var personalModelURL: URL?
     private var eventLogURL: URL?
@@ -353,6 +360,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
         guard previous.language != mode.language else { return }
         queue.async { [weak self] in
             self?.rebuildEngineForLanguageChange()
+            DispatchQueue.main.async { self?.onNeedsAutocompleteRefresh?() }
         }
     }
 
@@ -1018,7 +1026,37 @@ final class LyklabordAutocompleteService: AutocompleteService {
         let language = keyboardMode.language
         personalModelURL = container.appendingPathComponent(language.personalModelFileName)
         eventLogURL = container.appendingPathComponent(language.eventLogFileName)
+        emailStoreURL = container.appendingPathComponent(EmailAddressStore.fileName)
+        if let emailStoreURL {
+            emailStore = EmailAddressStore.load(from: emailStoreURL)
+        }
         reloadPersonalSnapshotIfChanged()
+    }
+
+    /// Surface a wrong-language chip when the pending token is attested
+    /// only in the other lexicon. Main-thread hop — `modeContext` is UI.
+    private func publishLanguageSwitch(for token: String) {
+        let pinned = engine?.suggestedLanguageSwitch(for: token)
+        let language = pinned.map(LearningLanguage.from(pinned:))
+        DispatchQueue.main.async { [weak self] in
+            self?.modeContext?.setSuggestedLanguageSwitch(language)
+        }
+    }
+
+    /// Record complete emails from the document window and persist them.
+    /// Skipped while incognito. Queue-confined store; write hops off-queue.
+    private func ingestAndSuggestEmails(from text: String, pendingToken: String) {
+        guard !keyboardMode.isIncognito else { return }
+        let before = emailStore
+        emailStore.ingest(from: text)
+        if EmailAddressStore.isEmail(pendingToken) {
+            emailStore.record(pendingToken)
+        }
+        guard emailStore != before, let url = emailStoreURL else { return }
+        let snapshot = emailStore
+        Self.auxiliaryStateQueue.async {
+            try? snapshot.write(to: url)
+        }
     }
 
     /// Split a pre-language-separation store, once per process.
@@ -1345,7 +1383,23 @@ final class LyklabordAutocompleteService: AutocompleteService {
         //   suggestion with all others via `withAutocorrectEnabled` below —
         //   the user opted out of ANY auto-commit on space, so the
         //   expansion stays tap-only there.
+        publishLanguageSwitch(for: pendingToken)
+        if fieldKind == .email {
+            ingestAndSuggestEmails(from: text, pendingToken: pendingToken)
+        }
         var ranked = suggestions
+        if fieldKind == .email, !pendingToken.isEmpty || !emailStore.addresses.isEmpty {
+            let emails = emailStore.suggestions(prefix: pendingToken, limit: 4)
+            if !emails.isEmpty {
+                ranked =
+                    emails.map {
+                        Suggestion(text: $0, isAutocorrect: false, confidence: 1.0)
+                    }
+                    + suggestions.filter { suggestion in
+                        !emails.contains { $0.caseInsensitiveCompare(suggestion.text) == .orderedSame }
+                    }
+            }
+        }
         if fieldKind != .url, fieldKind != .email, fieldKind != .secure,
             let expansion = textReplacements?.match(token: pendingToken)
         {

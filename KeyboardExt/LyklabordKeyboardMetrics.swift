@@ -14,6 +14,8 @@ enum LyklabordKeyboardMetrics {
     /// retaining a comfortable full-width tap target.
     static let toolbarHeight: CGFloat = 44
     static let toolbarPadding: CGFloat = 2
+    /// Wrong-language chip sitting above the suggestion chips.
+    static let languageSwitchHeight: CGFloat = 26
 
     /// KeyboardKit uses 56pt rows on large/liquid-glass phones. Apple's
     /// reference keyboard uses roughly 54pt rows in portrait.
