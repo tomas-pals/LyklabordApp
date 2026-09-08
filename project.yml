@@ -331,6 +331,8 @@ targets:
       - path: KeyboardExt/EmojiCatalog.swift
       - path: KeyboardExt/LyklabordKeyboardMetrics.swift
       - path: KeyboardExt/PeriodFlick.swift
+      - path: KeyboardExt/BackspaceRepeatTiming.swift
+      - path: KeyboardExt/LyklabordKeyboardBehavior.swift
     dependencies:
       - target: ReplayHost
       - package: KeyboardKit

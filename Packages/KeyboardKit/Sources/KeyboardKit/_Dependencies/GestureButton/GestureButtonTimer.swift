@@ -24,14 +24,25 @@ public class GestureButtonTimer: ObservableObject {
 
     deinit { stop() }
 
-    var interval: TimeInterval
+    /// Fixed delay used when ``intervalProvider`` is `nil`.
+    public var interval: TimeInterval
+
+    /// When set, each fire delay is `intervalProvider(elapsed)`,
+    /// where `elapsed` is seconds since ``start(action:)``.
+    /// The timer then self-reschedules instead of repeating
+    /// at a fixed interval.
+    public var intervalProvider: ((TimeInterval) -> TimeInterval)?
+
+    /// If `true`, ``start(action:)`` invokes the action
+    /// immediately, then schedules the next fire.
+    public var fireImmediately = false
 
     private var timer: Timer?
 
     private var startDate: Date?
 }
 
-extension GestureButtonTimer {
+public extension GestureButtonTimer {
 
     /// The elapsed time since the timer was started.
     var duration: TimeInterval? {
@@ -40,17 +51,23 @@ extension GestureButtonTimer {
     }
 
     /// Whether the timer is active.
-    var isActive: Bool { timer != nil }
+    var isActive: Bool { startDate != nil }
+
+    /// Delay before the next fire, given hold duration.
+    func nextInterval(after elapsed: TimeInterval) -> TimeInterval {
+        intervalProvider?(elapsed) ?? interval
+    }
 
     /// Start the repeat gesture timer with a certain action.
     func start(action: @escaping @Sendable () -> Void) {
         if isActive { return }
         stop()
         startDate = Date()
-        timer = Timer.scheduledTimer(
-            withTimeInterval: interval,
-            repeats: true
-        ) { _ in action() }
+        if fireImmediately {
+            action()
+            guard startDate != nil else { return }
+        }
+        armTimer(action)
     }
 
     /// Stop the repeat gesture timer.
@@ -65,5 +82,21 @@ extension GestureButtonTimer {
 
     func modifyStartDate(to date: Date) {
         startDate = date
+    }
+}
+
+private extension GestureButtonTimer {
+
+    func armTimer(_ action: @escaping @Sendable () -> Void) {
+        let delay = nextInterval(after: duration ?? 0)
+        let accelerating = intervalProvider != nil
+        timer = Timer.scheduledTimer(
+            withTimeInterval: delay,
+            repeats: !accelerating
+        ) { [weak self] _ in
+            action()
+            guard let self, accelerating, self.startDate != nil else { return }
+            self.armTimer(action)
+        }
     }
 }
