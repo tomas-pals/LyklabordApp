@@ -237,10 +237,12 @@ private extension CalloutContext {
     }
 
     func shouldUpdateSecondaryActionSelection(
-        for dragTranslation: CGSize
+        for _: CGSize
     ) -> Bool {
-        let translation = dragTranslation.width
-        if translation == 0 { return true }
-        return isLeading ? translation > 0 : translation < 0
+        // Both directions: a trailing key (bottom-row `.`) must be able to
+        // swipe right as well as left. The previous one-way gate kept the
+        // selection glued to the base character on a right swipe, so the
+        // release inserted `.` even when the user clearly flicked away.
+        true
     }
 }

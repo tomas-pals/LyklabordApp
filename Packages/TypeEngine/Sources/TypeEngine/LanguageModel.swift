@@ -1828,6 +1828,38 @@ struct BlendedLanguageModel {
     ///   ℓ   = sign(Δz̃) · η · max(0, |Δz̃| - deadZone), clipped to ±cap
     /// Corpus attestation only: BÍN morphology validates 3M surface forms
     /// including English-looking junk, so it is never lane evidence.
+    /// Raw unigram count from the underlying lexicon, ignoring the pin.
+    func rawFrequency(of word: String, language: EngineConfig.PinnedLanguage) -> UInt32? {
+        let folded = word.lowercased()
+        switch language {
+        case .icelandic: return icelandicLexicon.frequency(of: folded)
+        case .english: return englishLexicon.frequency(of: folded)
+        }
+    }
+
+    /// Exclusive Icelandic letters — enough to flip EN → ÍS even when the
+    /// form is missing from the (pinned-empty) Icelandic lexicon view.
+    private static let icelandicExclusive: Set<Character> = [
+        "ð", "Ð", "þ", "Þ", "æ", "Æ", "ö", "Ö",
+    ]
+
+    /// Suggest switching to the other pinned language when the token is
+    /// attested there and not in the active lexicon (or carries exclusive
+    /// Icelandic letters while English is pinned).
+    func suggestedLanguageSwitch(for word: String) -> EngineConfig.PinnedLanguage? {
+        guard let pinned = config.pinnedLanguage else { return nil }
+        let token = word.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard token.count >= 3 else { return nil }
+        if token.contains(where: { Self.icelandicExclusive.contains($0) }) {
+            return pinned == .english ? .icelandic : nil
+        }
+        let own = rawFrequency(of: token, language: pinned)
+        if own != nil { return nil }
+        let other: EngineConfig.PinnedLanguage = pinned == .icelandic ? .english : .icelandic
+        guard rawFrequency(of: token, language: other) != nil else { return nil }
+        return other
+    }
+
     func laneEvidence(of word: String) -> Double {
         let floor = config.laneEvidenceFloor
         let zIS =

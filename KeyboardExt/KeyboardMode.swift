@@ -47,19 +47,28 @@ extension LearningLanguage {
         case .english: .english
         }
     }
+
+    var toggled: LearningLanguage {
+        switch self {
+        case .icelandic: .english
+        case .english: .icelandic
+        }
+    }
+
+    static func from(pinned: EngineConfig.PinnedLanguage) -> LearningLanguage {
+        switch pinned {
+        case .icelandic: .icelandic
+        case .english: .english
+        }
+    }
 }
 
 /// What the mode key is currently showing.
 ///
-/// Three states on one key, cycled by tapping: **ÍS → EN → huliðshamur →
-/// ÍS**. Incognito is a state of the same key rather than a separate control
-/// because it behaves like one — it changes what the keyboard does with what
-/// you type, and you want to leave it as deliberately as you entered it.
-///
-/// Incognito keeps whichever language was last selected, so it reads that
-/// language's dictionaries normally and simply writes nothing. Long-pressing
-/// the key toggles incognito directly, which is how you reach incognito
-/// Icelandic without cycling through English.
+/// Tap flips **ÍS ↔ EN**. Long-press enters or leaves huliðshamur
+/// (incognito) without changing language — incognito is not a third tap
+/// state. Incognito keeps whichever language was last selected, so it
+/// reads that language's dictionaries normally and simply writes nothing.
 struct KeyboardMode: Equatable {
     var language: LearningLanguage
     var isIncognito: Bool
@@ -76,18 +85,18 @@ struct KeyboardMode: Equatable {
         isIncognito ? "Huliðshamur" : language.accessibilityLabel
     }
 
-    /// Tap: ÍS → EN → incognito → ÍS.
+    /// Tap: ÍS ↔ EN. Incognito is unchanged.
     func cycled() -> KeyboardMode {
-        if isIncognito { return KeyboardMode(language: .icelandic, isIncognito: false) }
-        switch language {
-        case .icelandic: return KeyboardMode(language: .english, isIncognito: false)
-        case .english: return KeyboardMode(language: .english, isIncognito: true)
-        }
+        KeyboardMode(language: language.toggled, isIncognito: isIncognito)
     }
 
     /// Long press: incognito on/off without disturbing the language.
     func togglingIncognito() -> KeyboardMode {
         KeyboardMode(language: language, isIncognito: !isIncognito)
+    }
+
+    func selecting(_ language: LearningLanguage) -> KeyboardMode {
+        KeyboardMode(language: language, isIncognito: isIncognito)
     }
 }
 
@@ -110,7 +119,8 @@ extension KeyboardAction {
 /// needs something to observe for the key's face — hence this thin
 /// main-thread mirror. Writes go through here so the two can never drift:
 /// the view reads `mode`, the action handler calls `cycle()`/
-/// `toggleIncognito()`, and both paths push into the service.
+/// `toggleIncognito()`, and both paths push into the service. The
+/// wrong-language chip also lives here (`suggestedLanguageSwitch`).
 ///
 /// Main thread only, like every `ObservableObject` driving a rendered view.
 /// Every caller already is one: the controller's `viewDidLoad` /
@@ -118,6 +128,10 @@ extension KeyboardAction {
 final class KeyboardModeContext: ObservableObject {
 
     @Published private(set) var mode: KeyboardMode = .default
+
+    /// Other language the current token looks like. Shown as a chip above
+    /// the suggestion bar; nil when the token matches the pinned lexicon.
+    @Published private(set) var suggestedLanguageSwitch: LearningLanguage?
 
     private weak var service: LyklabordAutocompleteService?
 
@@ -131,7 +145,7 @@ final class KeyboardModeContext: ObservableObject {
         apply(KeyboardMode.current(appGroupId: appGroupId))
     }
 
-    /// Tap: ÍS → EN → huliðshamur → ÍS.
+    /// Tap: ÍS ↔ EN.
     func cycle() {
         apply(mode.cycled())
     }
@@ -139,6 +153,21 @@ final class KeyboardModeContext: ObservableObject {
     /// Long press: incognito on/off, language untouched.
     func toggleIncognito() {
         apply(mode.togglingIncognito())
+    }
+
+    func selectLanguage(_ language: LearningLanguage) {
+        apply(mode.selecting(language))
+    }
+
+    func acceptSuggestedLanguageSwitch() {
+        guard let language = suggestedLanguageSwitch else { return }
+        apply(mode.selecting(language))
+    }
+
+    /// Main-thread only — called from the autocomplete service after each pass.
+    func setSuggestedLanguageSwitch(_ language: LearningLanguage?) {
+        guard suggestedLanguageSwitch != language else { return }
+        suggestedLanguageSwitch = language
     }
 
     private func apply(_ new: KeyboardMode) {

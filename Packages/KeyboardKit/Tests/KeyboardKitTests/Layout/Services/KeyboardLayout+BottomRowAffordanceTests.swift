@@ -58,7 +58,7 @@ private extension Callouts.Actions {
     static var testIcelandicWithPeriodCluster: Self {
         var actions = Self.english
         let overrides = Self(characters: [
-            ".": ".,!?@#:;-",
+            ".": ".,?!@#:;-",
         ])
         actions.actionsDictionary.merge(overrides.actionsDictionary) { _, new in new }
         return actions
@@ -141,7 +141,7 @@ class KeyboardLayout_BottomRowAffordanceTests: XCTestCase {
         let actions = Callouts.Actions.testIcelandicWithPeriodCluster
         let callout = actions.actions(for: .character("."))
 
-        let expectedChars: [String] = [".", ",", "!", "?", "@", "#", ":", ";", "-"]
+        let expectedChars: [String] = [".", ",", "?", "!", "@", "#", ":", ";", "-"]
         XCTAssertEqual(
             callout,
             expectedChars.map(KeyboardAction.character),

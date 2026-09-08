@@ -59,11 +59,24 @@ extension AutocompleteContext {
 struct LyklabordToolbar<Standard: View>: View {
 
     @ObservedObject var autocompleteContext: AutocompleteContext
+    @ObservedObject var modeContext: KeyboardModeContext
     let actionHandler: KeyboardActionHandler
     let suggestionAction: (Autocomplete.Suggestion) -> Void
     let standard: Standard
 
     var body: some View {
+        VStack(spacing: 0) {
+            if let language = modeContext.suggestedLanguageSwitch {
+                LanguageSwitchButton(language: language) {
+                    modeContext.acceptSuggestedLanguageSwitch()
+                }
+            }
+            suggestionRow
+        }
+    }
+
+    @ViewBuilder
+    private var suggestionRow: some View {
         let all = autocompleteContext.suggestions
         if all.isEmpty {
             EmojiFrecencyRow(actionHandler: actionHandler)
@@ -106,6 +119,33 @@ struct LyklabordToolbar<Standard: View>: View {
         slots.append(commit)
         if alternatives.count > 1 { slots.append(alternatives[1]) }
         return slots
+    }
+}
+
+/// Compact chip above the suggestion chips: the current token looks like
+/// the other language, so offer a one-tap switch that rebuilds the bar.
+private struct LanguageSwitchButton: View {
+    let language: LearningLanguage
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "globe")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(language.shortLabel)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(Color.primary)
+            .padding(.horizontal, 10)
+            .frame(height: LyklabordKeyboardMetrics.languageSwitchHeight)
+            .background(Color.primary.opacity(0.08), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .frame(height: LyklabordKeyboardMetrics.languageSwitchHeight)
+        .accessibilityLabel(language.accessibilityLabel)
+        .accessibilityHint("Skipta yfir á þetta tungumál")
     }
 }
 

@@ -239,6 +239,14 @@ public final class TypeEngine {
         model.isValidTypedWord(word)
     }
 
+    /// The other language, if `word` looks like it was typed in the wrong
+    /// pinned lexicon. Ignores the pin so English words can still be
+    /// recognized while Icelandic is selected (and vice versa). Nil when
+    /// unpinned, too short, or attested in the active language.
+    public func suggestedLanguageSwitch(for word: String) -> EngineConfig.PinnedLanguage? {
+        model.suggestedLanguageSwitch(for: word)
+    }
+
     /// Whether `word` is EJECTABLE own-learned personal vocabulary (wave 37
     /// long-press-to-forget): valid personal vocabulary (snapshot or session
     /// overlay), not tombstoned, and NOT otherwise valid — absent from
