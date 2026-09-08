@@ -59,7 +59,7 @@ extension Keyboard {
         ///   - endSentenceText: The text to use to end sentences with, by default `. `.
         ///   - endSentenceThreshold: The end sentence auto-close threshold to use, by default `3.0` seconds.
         ///   - repeatGestureTimer: The repease gesture timer to use, by default a new one.
-        public init(
+        open init(
             keyboardContext: KeyboardContext,
             doubleTapThreshold: TimeInterval? = nil,
             endSentenceText: String? = nil,

@@ -2,21 +2,54 @@
 //  LyklabordKeyboardBehavior.swift
 //  LyklabordKeyboard
 //
-//  Custom keyboard behavior — currently just decision D3/D2 of the punctuation
-//  wave (docs/PUNCTUATION_BEHAVIOR.md): a period preceded by a digit is an
-//  ORDINAL or decimal ("21.", "1.000,50", "v2.0"), not a sentence end, so it
-//  must not auto-capitalize the following word. In Icelandic this is constant —
-//  dates ("þann 21. mars"), lists, versions — and native/generic keyboards get
-//  it wrong, capitalizing "Mars".
+//  Custom keyboard behavior:
 //
-//  Everything else defers to KeyboardKit's StandardKeyboardBehavior unchanged
-//  (double-space→". ", sentence auto-cap, layout switching, backspace range).
+//  - D3/D2 of the punctuation wave (docs/PUNCTUATION_BEHAVIOR.md): a
+//    period preceded by a digit is an ORDINAL or decimal ("21.",
+//    "1.000,50", "v2.0"), not a sentence end, so it must not
+//    auto-capitalize the following word. In Icelandic this is constant —
+//    dates ("þann 21. mars"), lists, versions — and native/generic
+//    keyboards get it wrong, capitalizing "Mars".
+//
+//  - Long-press backspace deletes whole words. KeyboardKit's stock
+//    `backspaceRange` waits 3s and then deletes words at a flat 0.1s
+//    tick — and Lyklaborð used to construct this type without the
+//    shared repeat timer, so the 3s switch never even armed. Tap still
+//    deletes one character; once the shared timer is running (after
+//    the 0.5s repeatDelay) we delete a word per tick, with pauses from
+//    `BackspaceRepeatTiming` (short, shrinking, floored).
+//
+//  Everything else defers to KeyboardKit's StandardKeyboardBehavior
+//  (double-space→". ", sentence auto-cap, layout switching).
 //
 
 import Foundation
 import KeyboardKit
 
 final class LyklabordKeyboardBehavior: Keyboard.StandardKeyboardBehavior {
+
+    override init(
+        keyboardContext: KeyboardContext,
+        doubleTapThreshold: TimeInterval? = nil,
+        endSentenceText: String? = nil,
+        endSentenceThreshold: TimeInterval? = nil,
+        repeatGestureTimer: GestureButtonTimer? = nil
+    ) {
+        super.init(
+            keyboardContext: keyboardContext,
+            doubleTapThreshold: doubleTapThreshold,
+            endSentenceText: endSentenceText,
+            endSentenceThreshold: endSentenceThreshold,
+            repeatGestureTimer: repeatGestureTimer
+        )
+        self.repeatGestureTimer.fireImmediately = true
+        self.repeatGestureTimer.intervalProvider = BackspaceRepeatTiming.pause(afterHold:)
+    }
+
+    /// Tap / first press: one character. Held repeat: whole words.
+    override var backspaceRange: Keyboard.BackspaceRange {
+        repeatGestureTimer.duration != nil ? .word : .character
+    }
 
     override func preferredKeyboardCase(
         after gesture: Keyboard.Gesture,
