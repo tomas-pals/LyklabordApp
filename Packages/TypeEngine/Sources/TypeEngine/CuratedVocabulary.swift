@@ -108,3 +108,44 @@ public struct CompositeVocabulary: PersonalVocabulary {
         curated.contains(word) || personal.isExplicit(word)
     }
 }
+
+/// Overlays a per-language hidden-suggestion set onto any personal layer
+/// (curated, Plus personal, both, or neither). Hidden words take the same
+/// engine contract as tombstones: never suggested, never predicted, still
+/// uncorrected if the user types them. Matching is case-insensitive.
+public struct HiddenSuggestionsVocabulary: PersonalVocabulary {
+
+    private let base: PersonalVocabulary?
+    private let hiddenLowercased: Set<String>
+
+    public init(base: PersonalVocabulary?, hidden: Set<String>) {
+        self.base = base
+        self.hiddenLowercased = Set(hidden.map { $0.lowercased() })
+    }
+
+    public func allWords() -> [(word: String, count: UInt32)] {
+        (base?.allWords() ?? []).filter { !isHidden($0.word) }
+    }
+
+    public func continuations(of first: String, limit: Int) -> [(word: String, count: UInt32)] {
+        (base?.continuations(of: first, limit: limit) ?? [])
+            .filter { !isHidden($0.word) }
+    }
+
+    public func bigramCount(_ first: String, _ second: String) -> UInt32? {
+        if isHidden(first) || isHidden(second) { return nil }
+        return base?.bigramCount(first, second)
+    }
+
+    public func isTombstoned(_ word: String) -> Bool {
+        isHidden(word) || (base?.isTombstoned(word) ?? false)
+    }
+
+    public func isExplicit(_ word: String) -> Bool {
+        !isHidden(word) && (base?.isExplicit(word) ?? false)
+    }
+
+    private func isHidden(_ word: String) -> Bool {
+        hiddenLowercased.contains(word.lowercased())
+    }
+}

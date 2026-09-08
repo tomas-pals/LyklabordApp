@@ -191,6 +191,13 @@ enum Strings {
         static let hapticToggleTitle = "Titringur við innslátt"
         static let hapticSectionFooter = "Slekkur á öllum titringi frá Lyklaborði, líka við langa snertingu og val á broddstöfum. iOS krefst „Allow Full Access“ til að titringur virki."
 
+        static let hiddenSuggestionsSectionTitle = "Tillögur"
+        static let hiddenSuggestionsRow = "Faldar tillögur"
+        static let hiddenSuggestionsFooter = "Haltu inni tillögu á lyklaborðinu til að fela hana. Orðið birtist ekki aftur sem tillaga á því tungumáli — þú getur samt skrifað það. Endurheimtu falið orð hér."
+        static let hiddenSuggestionsEmpty = "Engar faldar tillögur"
+        static let hiddenSuggestionsUnhide = "Sýna aftur"
+        static let hiddenSuggestionsNavigationTitle = "Faldar tillögur"
+
         static let aboutSectionTitle = "Um Lyklaborð"
         static let aboutOpenSourceTitle = "Opinn hugbúnaður"
         static let aboutOpenSourceDetail = "Kóðinn er opinn og öllum aðgengilegur — hægt er að skoða nákvæmlega hvað lyklaborðið gerir."

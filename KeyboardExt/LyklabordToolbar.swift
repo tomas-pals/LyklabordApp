@@ -50,8 +50,8 @@ extension AutocompleteContext {
 ///   the middle slot" holds with no exceptions.
 ///
 /// - **Alternatives** (left and right of centre) — the next-ranked
-///   candidates, in rank order. Personal-learned words keep KeyboardKit's
-///   wave-37 long-press-to-eject affordance here.
+///   candidates, in rank order. Long-press hides a suggestion for the
+///   current language (settings can restore it).
 ///
 /// An emoji match takes the right-hand alternative's place (KeyboardKit's
 /// `Autocomplete.Toolbar` drops one plain candidate when an `.emoji`

@@ -50,6 +50,10 @@ final class AppModel {
     static let hapticFeedbackEnabledDefaultsKey =
         "com.keyboardkit.settings.feedback.isHapticFeedbackEnabled"
 
+    /// Per-language hidden-suggestion lists. Written by the keyboard
+    /// (long-press hide) and the settings screen (un-hide). See
+    /// `Learning.HiddenSuggestionsStore`.
+
     // MARK: - State
 
     enum ContainerState: Equatable {
@@ -64,6 +68,10 @@ final class AppModel {
     private(set) var learnedWords: [String] = []
     private(set) var userAddedWords: [String] = []
     private(set) var lastErrorMessage: String?
+
+    /// Hidden suggestion-bar words, keyed by language. Settings lists these
+    /// so the user can restore a long-press hide.
+    private(set) var hiddenSuggestions: [LearningLanguage: [String]] = [:]
 
     /// Which store the dictionary editor is showing. The two are fully
     /// separate — every listing, edit, import and export below is scoped to
@@ -132,6 +140,7 @@ final class AppModel {
                 LearningLanguage.icelandic.personalModelFileName)
         )
         loadModels()
+        refreshHiddenSuggestions()
         // A pulled/merged model was written to the Icelandic model file by
         // the coordinator — reload our in-memory copies and listings.
         syncCoordinator.onModelDataReplaced = { [weak self] in
@@ -253,6 +262,29 @@ final class AppModel {
     func undoRemove(_ word: String) {
         try? model?.addUserWord(word)
         persist()
+    }
+
+    /// Restore a suggestion the user hid via long-press on the keyboard.
+    func unhideSuggestion(_ word: String, language: LearningLanguage) {
+        hiddenStore?.unhide(word, language: language)
+        refreshHiddenSuggestions()
+    }
+
+    private var hiddenStore: HiddenSuggestionsStore? {
+        UserDefaults(suiteName: Self.appGroupIdentifier)
+            .map(HiddenSuggestionsStore.init(defaults:))
+    }
+
+    func refreshHiddenSuggestions() {
+        guard let store = hiddenStore else {
+            hiddenSuggestions = [:]
+            return
+        }
+        hiddenSuggestions = Dictionary(
+            uniqueKeysWithValues: LearningLanguage.allCases.map {
+                ($0, store.words(for: $0))
+            }
+        )
     }
 
     /// "Bæta við orði" flow. Trims surrounding whitespace, then delegates
@@ -408,6 +440,9 @@ final class AppModel {
         }
 
         refreshListings()
+
+        hiddenStore?.clearAll()
+        refreshHiddenSuggestions()
 
         // 3. iCloud: only when the container is live. Delete the snapshot and
         //    the envelope key (total wipe).

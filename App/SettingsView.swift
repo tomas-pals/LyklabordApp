@@ -84,6 +84,7 @@ struct SettingsView: View {
             Form {
                 spacebarSection
                 hapticSection
+                hiddenSuggestionsSection
                 subscriptionSection
                 syncSection
                 dataSection
@@ -158,6 +159,22 @@ struct SettingsView: View {
             Text(Strings.Settings.hapticSectionTitle)
         } footer: {
             Text(Strings.Settings.hapticSectionFooter)
+        }
+    }
+
+    // MARK: - Hidden suggestions
+
+    private var hiddenSuggestionsSection: some View {
+        Section {
+            NavigationLink {
+                HiddenSuggestionsView()
+            } label: {
+                Label(Strings.Settings.hiddenSuggestionsRow, systemImage: "eye.slash")
+            }
+        } header: {
+            Text(Strings.Settings.hiddenSuggestionsSectionTitle)
+        } footer: {
+            Text(Strings.Settings.hiddenSuggestionsFooter)
         }
     }
 

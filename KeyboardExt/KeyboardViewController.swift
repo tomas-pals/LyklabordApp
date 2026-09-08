@@ -324,9 +324,7 @@ final class KeyboardViewController: KeyboardInputViewController {
             KeyboardView(
                 state: controller.state,
                 services: controller.services,
-                // Custom key faces: the adaptive quote key and the mode key.
-                // The spacebar keeps its standard "Bil" label: the word space
-                // commits is shown in the suggestion bar's centre slot.
+                // Custom key faces: adaptive quote key, mode key, blank spacebar.
                 buttonContent: { params in
                     LyklabordButtonContent(
                         action: params.item.action,
@@ -426,24 +424,26 @@ final class KeyboardViewController: KeyboardInputViewController {
                 }
                 return Callouts.Actions.icelandic.actions(for: params.action)
             }
-            // Wave 37: long-press a suggestion that is the user's OWN learned
-            // vocabulary to eject it (tap teaches, long-press forgets). Only
-            // suggestions the service flags `isPersonalLearned` get the
-            // affordance; the confirm is a reversible inline pill. Routes to
-            // the autocomplete service's tombstone path (App Group file only,
-            // no network). nil when the service is unavailable ⇒ tap-only.
             .autocompleteEjectAffordance(
                 (controller.services.autocompleteService
                     as? LyklabordAutocompleteService)
                     .map { service in
                         Autocomplete.EjectAffordance(
                             action: { suggestion in
-                                service.ejectPersonalWord(suggestion.text)
+                                service.hideSuggestion(suggestion.text)
+                                let text = suggestion.text
+                                var remaining = controller.state.autocompleteContext
+                                    .suggestionsFromService
+                                remaining.removeAll {
+                                    $0.text.caseInsensitiveCompare(text) == .orderedSame
+                                }
+                                controller.state.autocompleteContext.suggestionsFromService =
+                                    remaining
                             },
                             confirmTitle: { suggestion in
-                                KeyboardStrings.ejectConfirm(suggestion.text)
+                                KeyboardStrings.hideConfirm(suggestion.text)
                             },
-                            cancelLabel: KeyboardStrings.ejectCancel
+                            cancelLabel: KeyboardStrings.hideCancel
                         )
                     }
             )
@@ -460,15 +460,14 @@ final class KeyboardViewController: KeyboardInputViewController {
 /// needs strings.
 enum KeyboardStrings {
 
-    /// Long-press eject confirm pill (wave 37). Warm, plain Icelandic, with
-    /// the word in Icelandic quotation marks; kept short so it fits a
-    /// suggestion slot. Full intent: "remove <word> from your dictionary".
-    static func ejectConfirm(_ word: String) -> String {
-        "Fjarlægja \u{201E}\(word)\u{201C}?"
+    /// Long-press hide confirm pill. Short so it fits a suggestion slot.
+    /// Full intent: never suggest this word again in the current language.
+    static func hideConfirm(_ word: String) -> String {
+        "Fela \u{201E}\(word)\u{201C}?"
     }
 
-    /// Accessibility label for the eject cancel (✕) control.
-    static let ejectCancel = "Hætta við"
+    /// Accessibility label for the hide cancel (✕) control.
+    static let hideCancel = "Hætta við"
 }
 
 // MARK: - Accessibility (VoiceOver labels)
@@ -483,8 +482,8 @@ enum KeyboardStrings {
 ///
 /// - Correct already, no override: `.character` keys (ð/æ/ö/þ and the `.`
 ///   key speak the character itself — the speech engine handles Icelandic
-///   letters), `.space` ("Bil" via KKL10n's is.lproj — matches the visible
-///   key label), `.shift`/`.capsLock` ("Shift"/"Capslock" — icon keys with
+///   letters), `.space` ("Bil" via KKL10n's is.lproj — VoiceOver only; the
+///   visible key is unlabeled), `.shift`/`.capsLock` ("Shift"/"Capslock" — icon keys with
 ///   universally known names), `.nextKeyboard` ("Next Keyboard" — a system
 ///   affordance named as iOS names it).
 /// - Wrong, fixed here:

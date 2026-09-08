@@ -238,21 +238,16 @@ private extension Autocomplete.Toolbar {
 
 // MARK: - Fork patch (Lyklaborð wave 37): long-press to eject learned words
 
-/// FORK PATCH (Lyklaborð wave 37 — long-press to eject learned vocabulary):
+/// FORK PATCH (Lyklaborð — long-press to hide a suggestion):
 /// the tap button wrapping one toolbar suggestion, extended with a long-press
-/// → inline two-step confirm for suggestions the user's OWN personal
-/// vocabulary learned (``Autocomplete/Suggestion/isPersonalLearned``).
+/// → inline two-step confirm for any non-verbatim, non-emoji suggestion.
 ///
 /// Interaction (device-only — no headless coverage): a normal tap always
 /// inserts the suggestion. When an ``Autocomplete/EjectAffordance`` is
-/// injected AND the suggestion is own-learned, a long-press arms an inline
-/// confirm pill — a red "Fjarlægja „orð"?" the user taps to forget the word,
-/// plus a cancel (✕). A reversible two-step confirm was chosen over a
-/// destructive-immediate action (no dark patterns; every deletion is
-/// cancelable) and over KeyboardKit's callout/menu machinery (heavy in an
-/// extension; the inline pill lives entirely in this view's own state). Any
-/// change to the suggestion at this slot (the next keystroke rebuilds the
-/// bar) auto-cancels a pending confirm.
+/// injected, a long-press arms an inline confirm pill — a red "Fela „orð"?"
+/// the user taps to hide the word for the current language, plus a cancel
+/// (✕). The verbatim/`.unknown` slot is never hidable (it is the typed
+/// literal, not a suggestion). A rebuilt bar auto-cancels a pending confirm.
 struct ToolbarItemButton<Content: View>: View {
 
     let suggestion: Autocomplete.Suggestion
@@ -262,8 +257,8 @@ struct ToolbarItemButton<Content: View>: View {
     @Environment(\.autocompleteEjectAffordance) private var eject
     @State private var confirmingEject = false
 
-    private var isEjectable: Bool {
-        suggestion.isPersonalLearned && eject != nil
+    private var isHidable: Bool {
+        !suggestion.isUnknown && suggestion.type != .emoji && eject != nil
     }
 
     var body: some View {
@@ -296,7 +291,7 @@ struct ToolbarItemButton<Content: View>: View {
         }
         .buttonStyle(.plain)
 
-        if isEjectable {
+        if isHidable {
             // A long-press arms the confirm without inserting the word; a
             // plain tap still routes to `suggestionAction` above.
             button.onLongPressGesture(minimumDuration: 0.45) {

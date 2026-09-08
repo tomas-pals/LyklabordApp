@@ -169,6 +169,11 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// if the resource is missing, in which case the engine runs unchanged.
     private var curatedVocabulary: CuratedVocabulary?
 
+    /// Lowercased words the user hid from the suggestion bar for the current
+    /// language. Always-on (not Plus-gated). Wrapped into the personal
+    /// snapshot as tombstones so the engine never offers them.
+    private var hiddenSuggestions: Set<String> = []
+
     // MARK: - Cross-queue fast path (lock-guarded, NOT queue-confined)
 
     /// Mirror of `session.hasPendingContinuationRevert`, updated on `queue`
@@ -573,7 +578,29 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// controller's `viewWillAppear` — one stat per keyboard presentation.
     func refreshPersonalSnapshotIfNeeded() {
         queue.async { [weak self] in
+            self?.reloadHiddenSuggestionsIfChanged()
             self?.reloadPersonalSnapshotIfChanged()
+        }
+    }
+
+    /// Re-read the App Group hidden-suggestion list (settings un-hide, or a
+    /// hide from a previous keyboard process). Identity change invalidates
+    /// the personal-model mtime cache so `combinedVocabulary` re-wraps.
+    private func loadHiddenSuggestions() {
+        let loaded: Set<String>
+        if let appGroupId, let store = HiddenSuggestionsStore(appGroupId: appGroupId) {
+            loaded = store.hiddenSet(for: keyboardMode.language)
+        } else {
+            loaded = []
+        }
+        hiddenSuggestions = loaded
+    }
+
+    private func reloadHiddenSuggestionsIfChanged() {
+        let previous = hiddenSuggestions
+        loadHiddenSuggestions()
+        if hiddenSuggestions != previous {
+            personalModelDate = nil
         }
     }
 
@@ -765,6 +792,32 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// (wave 37, the long-press eject affordance) — which tombstones via
     /// `PersonalModel.remove(word:)` exactly like the app's dictionary editor.
     func unlearnWord(_ word: String) {}
+
+    /// Long-press hide: never offer this word again as a suggestion in the
+    /// current language. Persists to the App Group `HiddenSuggestionsStore`
+    /// (not Plus-gated — base-lexicon words are hideable too), forgets any
+    /// in-session overlay copy, and re-wraps the personal snapshot so the
+    /// word leaves the bar on the next autocomplete pass.
+    func hideSuggestion(_ word: String) {
+        queue.async { [weak self] in
+            self?.hideSuggestionOnQueue(word)
+        }
+    }
+
+    private func hideSuggestionOnQueue(_ word: String) {
+        let trimmed = word.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let language = keyboardMode.language
+        if let appGroupId, let store = HiddenSuggestionsStore(appGroupId: appGroupId) {
+            store.hide(trimmed, language: language)
+        }
+        hiddenSuggestions.insert(trimmed.lowercased())
+        engine?.forgetSessionWord(trimmed)
+        // Force a snapshot re-wrap even when the personal-model file is
+        // unchanged — hidden-set identity is not in that file's mtime.
+        personalModelDate = nil
+        reloadPersonalSnapshotIfChanged()
+    }
 
     /// Long-press eject (wave 37 — "tap teaches, long-press forgets"): the
     /// user long-pressed a bar suggestion that is their OWN learned personal
@@ -991,6 +1044,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
         }
         if let loadedInflection { engine.setInflection(loadedInflection) }
         self.engine = engine
+        loadHiddenSuggestions()
         engine.setPersonalVocabulary(combinedVocabulary(personal: nil))
         // Personal learning (M2): resolve the App Group container and load
         // the personal snapshot for this language. Fully graceful — no
@@ -1030,6 +1084,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
         if let emailStoreURL {
             emailStore = EmailAddressStore.load(from: emailStoreURL)
         }
+        loadHiddenSuggestions()
         reloadPersonalSnapshotIfChanged()
     }
 
@@ -1121,10 +1176,17 @@ final class LyklabordAutocompleteService: AutocompleteService {
     ///   - curated + personal → `CompositeVocabulary` (both layers)
     ///   - curated only       → curated (personal layer off / not entitled)
     ///   - no curated file     → personal (or nil) — original behavior preserved
+    /// Hidden-bar words wrap last so they silence every layer, including a
+    /// nil personal snapshot (free tier / Full Access denied).
     private func combinedVocabulary(personal: PersonalVocabulary?) -> PersonalVocabulary? {
-        guard let curated = curatedVocabulary else { return personal }
-        guard let personal else { return curated }
-        return CompositeVocabulary(curated: curated, personal: personal)
+        let base: PersonalVocabulary?
+        if let curated = curatedVocabulary {
+            base = personal.map { CompositeVocabulary(curated: curated, personal: $0) } ?? curated
+        } else {
+            base = personal
+        }
+        guard !hiddenSuggestions.isEmpty else { return base }
+        return HiddenSuggestionsVocabulary(base: base, hidden: hiddenSuggestions)
     }
 
     /// Stat the model file; (re)load and inject a fresh snapshot when its
@@ -1138,7 +1200,11 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// `refreshPersonalSnapshotIfNeeded`), so entitlement changes take
     /// effect the next time the keyboard comes up.
     private func reloadPersonalSnapshotIfChanged() {
-        guard let engine, let personalModelURL else { return }
+        guard let engine else { return }
+        guard let personalModelURL else {
+            engine.setPersonalVocabulary(combinedVocabulary(personal: nil))
+            return
+        }
         let entitled = Self.isPlusEntitled(appGroupId: appGroupId)
         if entitled != personalLayerEntitled {
             personalLayerEntitled = entitled

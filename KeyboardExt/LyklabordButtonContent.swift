@@ -2,11 +2,9 @@
 //  LyklabordButtonContent.swift
 //  LyklabordKeyboard
 //
-//  Custom key faces. Currently just the adaptive quote key — the spacebar
-//  used to double as a signal surface (the armed autocorrect word, plus a
-//  DEBUG build stamp) and no longer does: the word space commits now lives
-//  in the suggestion bar's centre slot, where it is readable without a thumb
-//  over it. See `LyklabordToolbar`.
+//  Custom key faces: adaptive quote key, mode key, and a blank spacebar.
+//  The word space commits lives in the suggestion bar's centre slot — the
+//  spacebar itself stays unlabeled (Apple's English keyboard does the same).
 //
 
 import SwiftUI
@@ -75,6 +73,8 @@ struct LyklabordButtonContent<Standard: View>: View {
     var body: some View {
         if action == .lyklabordMode {
             ModeKeyFace(mode: modeContext.mode)
+        } else if action == .space {
+            Color.clear
         } else if case .character(let char) = action,
             char == SmartPunctuation.open || char == SmartPunctuation.close {
             QuoteKeyFace(active: char)

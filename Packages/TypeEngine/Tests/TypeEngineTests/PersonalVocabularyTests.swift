@@ -10,7 +10,7 @@ final class PersonalVocabularyTests: XCTestCase {
 
     /// "kubbur"/"Miðeind" are OOV in the fixtures and in the fake BÍN.
     private func engine(
-        personal: FakePersonal? = nil,
+        personal: PersonalVocabulary? = nil,
         config: EngineConfig = EngineConfig()
     ) -> TypeEngine {
         let engine = Fixtures.engine(config: config)
@@ -136,6 +136,36 @@ final class PersonalVocabularyTests: XCTestCase {
         let e = engine(personal: FakePersonal(tombstones: ["dag"]))
         let bar = e.suggestions(context: "góðan ", currentWord: "", limit: 5)
         XCTAssertFalse(bar.contains { $0.text == "dag" }, "bar: \(bar.map(\.text))")
+    }
+
+    func testHiddenBaseWordIsNeverSuggested() {
+        let hidden = HiddenSuggestionsVocabulary(base: nil, hidden: ["hestur"])
+        let e = engine(personal: hidden)
+        let bar = e.suggestions(context: "", currentWord: "hestu", limit: 5)
+        XCTAssertFalse(bar.contains { $0.text == "hestur" }, "bar: \(bar.map(\.text))")
+    }
+
+    func testHiddenWordIsLanguageScopedViaSeparateSets() {
+        // English "the" hidden; Icelandic completions must still offer "hestur".
+        let hidden = HiddenSuggestionsVocabulary(base: nil, hidden: ["the"])
+        let e = engine(personal: hidden)
+        let bar = e.suggestions(context: "", currentWord: "hestu", limit: 5)
+        XCTAssertTrue(bar.contains { $0.text == "hestur" }, "bar: \(bar.map(\.text))")
+    }
+
+    func testHiddenWordTypedVerbatimIsNotCorrected() {
+        let hidden = HiddenSuggestionsVocabulary(base: nil, hidden: ["grenn"])
+        let e = engine(personal: hidden)
+        let bar = e.suggestions(context: "", currentWord: "grenn")
+        XCTAssertFalse(bar.contains { $0.isAutocorrect }, "bar: \(bar.map(\.text))")
+        XCTAssertFalse(bar.contains { $0.text == "grenn" })
+    }
+
+    func testHiddenIsCaseInsensitive() {
+        let hidden = HiddenSuggestionsVocabulary(base: nil, hidden: ["Hestur"])
+        let e = engine(personal: hidden)
+        let bar = e.suggestions(context: "", currentWord: "hestu", limit: 5)
+        XCTAssertFalse(bar.contains { $0.text.lowercased() == "hestur" }, "bar: \(bar.map(\.text))")
     }
 
     func testTombstonedWordTypedVerbatimIsNotCorrected() {
