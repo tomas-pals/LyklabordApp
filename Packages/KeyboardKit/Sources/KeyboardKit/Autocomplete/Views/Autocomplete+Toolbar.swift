@@ -257,6 +257,7 @@ struct ToolbarItemButton<Content: View>: View {
 
     @Environment(\.autocompleteEjectAffordance) private var eject
     @State private var confirmingEject = false
+    @State private var swallowNextTap = false
 
     private var isHidable: Bool {
         suggestion.isHidableFromDictionary && eject != nil
@@ -286,6 +287,10 @@ struct ToolbarItemButton<Content: View>: View {
     @ViewBuilder
     private var tapButton: some View {
         let button = Button {
+            if swallowNextTap {
+                swallowNextTap = false
+                return
+            }
             suggestionAction(suggestion)
         } label: {
             content()
@@ -305,6 +310,7 @@ struct ToolbarItemButton<Content: View>: View {
                             let dx = value.translation.width
                             let dy = value.translation.height
                             guard dy < -24, abs(dy) > abs(dx) else { return }
+                            swallowNextTap = true
                             confirmingEject = true
                         }
                 )
