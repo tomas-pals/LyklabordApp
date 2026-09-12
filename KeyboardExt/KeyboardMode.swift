@@ -100,6 +100,17 @@ struct KeyboardMode: Equatable {
     }
 }
 
+extension Keyboard.KeyboardType {
+    /// Letter-row boards that must keep the ÍS/EN key. Numeric / symbolic
+    /// / emoji are temporary surfaces; email / URL / web-search are not.
+    var showsLanguageModeKey: Bool {
+        switch self {
+        case .alphabetic, .email, .url, .webSearch: true
+        default: false
+        }
+    }
+}
+
 extension KeyboardAction {
     /// The mode key, between the emoji key and the spacebar.
     ///

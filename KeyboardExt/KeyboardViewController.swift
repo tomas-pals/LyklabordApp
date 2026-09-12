@@ -412,6 +412,11 @@ final class KeyboardViewController: KeyboardInputViewController {
                 // rewriting away from all quote characters.
                 if case .character(let char) = params.action {
                     switch char {
+                    case ".":
+                        // Flick-only: left `,` / right `?` / up `!`.
+                        // Empty (not nil) suppresses the stock punctuation
+                        // callout without falling back to CalloutService.
+                        return []
                     case "\"":
                         return QuoteKey.calloutCharacters(for: .neutral).map { .character($0) }
                     case SmartPunctuation.open:
@@ -631,15 +636,9 @@ extension Callouts.Actions {
             overrides[.character(lowerKey)] = mapping.lowercase.map { .character(char: $0) }
             overrides[.character(upperKey)] = mapping.uppercase.map { .character(char: $0) }
         }
-        // Bottom-row affordance #2 (PLAN.md): long-press on the `.` key
-        // (right of the spacebar — see `LyklabordIPhoneLayoutService`
-        // below) shows this cluster, period nearest/first since that's
-        // the char under the finger. Overrides `Callouts.Actions.base`'s
-        // stock "." -> ".…" mapping.
-        // Period under the finger, comma first to the left, then `?`.
-        // Quick flicks (see `PeriodFlick`) do not need this menu:
-        // left = `,`, right = `?`.
-        overrides[.character(".")] = ".,?!@#:;-".map { .character(char: $0) }
+        // Period is flick-only (see `PeriodFlick`): no long-press menu.
+        // Stock English "." → ".…" must not leak back in.
+        overrides[.character(".")] = []
         actions.actionsDictionary.merge(overrides) { _, new in new }
         return actions
     }
@@ -655,10 +654,10 @@ extension Callouts.Actions {
 /// editing it in place — `bottomActions(for:)` is `open`, so this is the
 /// same non-deprecated override mechanism the rest of this file relies on
 /// (see the layout-service comment in `viewDidLoad()` above). Only applies
-/// to the plain alphabetic keyboard type: the email/url/webSearch bottom
-/// rows (which already substitute `@`/`.com`/etc. for the space slot) and
-/// the numeric/symbolic keypads (whose input sets already contain `.`/`,`)
-/// are left untouched.
+/// to the alphabetic board for the period key. Email / URL / web-search
+/// keep their `@` / `.com` / `/` substitutions, but still get the ÍS/EN
+/// key — Safari's address bar is `.url` half the time and `.alphabetic`
+/// the other half. Numeric / symbolic keypads stay untouched.
 final class LyklabordIPhoneLayoutService: KeyboardLayout.iPhoneLayoutService {
 
     /// Adaptive quote key (issue #10): resolves, at layout time, the exact
@@ -721,6 +720,13 @@ final class LyklabordIPhoneLayoutService: KeyboardLayout.iPhoneLayoutService {
             actions.insert(.keyboardType(.alphabetic), at: 0)
             return actions
         }
+        // ÍS/EN must stay reachable on email/URL/web-search boards.
+        // Safari's address bar flips between `.alphabetic` (search) and
+        // `.url` (it decided this is a URL) — gating on alphabetic-only
+        // made the language key vanish intermittently.
+        if context.keyboardType.showsLanguageModeKey {
+            Self.insertLanguageModeKey(&actions)
+        }
         guard context.keyboardType == .alphabetic else { return actions }
         // Exactly one emoji key, placed immediately to the RIGHT of the 123
         // numeric switch in the bottom-left cluster. KeyboardKit's stock layout
@@ -735,18 +741,28 @@ final class LyklabordIPhoneLayoutService: KeyboardLayout.iPhoneLayoutService {
             return false
         }
         actions.insert(.keyboardType(.emojis), at: numericIndex.map { $0 + 1 } ?? 0)
-        // Language / incognito key immediately before the spacebar, i.e. the
-        // last slot of the left-hand modifier cluster. Everything that
-        // changes what a keystroke MEANS lives there (123, emoji, globe);
-        // the mode key changes what every keystroke means most of all.
-        if let spaceIndex = actions.firstIndex(of: .space) {
-            actions.insert(.lyklabordMode, at: spaceIndex)
-        }
         // Period key immediately before the return key (dogfood pattern).
         if let returnIndex = actions.firstIndex(where: { $0.isPrimaryAction }) {
             actions.insert(.character("."), at: returnIndex)
         }
         return actions
+    }
+
+    /// Language key immediately before the spacebar, or before the URL
+    /// domain / `.com` cluster when that row has no space (Safari URL).
+    static func insertLanguageModeKey(_ actions: inout KeyboardAction.Row) {
+        guard !actions.contains(.lyklabordMode) else { return }
+        if let spaceIndex = actions.firstIndex(of: .space) {
+            actions.insert(.lyklabordMode, at: spaceIndex)
+            return
+        }
+        if let domainIndex = actions.firstIndex(where: {
+            if case .urlDomain = $0 { return true }
+            if case .text = $0 { return true }
+            return false
+        }) {
+            actions.insert(.lyklabordMode, at: domainIndex)
+        }
     }
 
     /// Bottom-row width tuning (dogfood feedback 2026-07-15: the period key
@@ -762,15 +778,19 @@ final class LyklabordIPhoneLayoutService: KeyboardLayout.iPhoneLayoutService {
         index: Int,
         context: KeyboardContext
     ) -> KeyboardLayout.ItemWidth {
-        if context.keyboardType == .alphabetic,
+        if context.keyboardType.showsLanguageModeKey,
             row == inputSet(for: context).rows.count
         {
             // Same reason as the emoji key below: `.custom` defaults to
-            // `.available`, which would split the row with the spacebar.
-            // Slightly narrower than the emoji key — its face is two small
-            // letters, and the spacebar is the key that pays for every
-            // millimetre spent here.
+            // `.available`, which would split the row with the spacebar
+            // (or the URL `.com` slot). Slightly narrower than the emoji
+            // key — its face is two small letters.
             if action == .lyklabordMode { return .percentage(0.10) }
+            guard context.keyboardType == .alphabetic else {
+                return super.itemSizeWidth(
+                    for: action, row: row, index: index, context: context
+                )
+            }
             switch action {
             case .character("."):
                 return .percentage(0.08)
@@ -892,7 +912,7 @@ final class LyklabordActionHandler: KeyboardAction.StandardActionHandler {
     private var didLongPressModeKey = false
 
     /// Latest flick on the period key. Cleared on a fresh press; applied
-    /// on release so a quick left/right swipe inserts `,` / `?` instead of `.`.
+    /// on release so a swipe inserts `,` / `?` / `!` instead of `.`.
     private var periodFlick: PeriodFlick?
 
     init(

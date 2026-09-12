@@ -53,14 +53,43 @@ class TestDeviceLayoutService: KeyboardLayout.DeviceBasedLayoutService {
     }
 }
 
-/// Mirrors the "." entry added to `Callouts.Actions.icelandic`.
+/// Mirrors the empty "." override in `Callouts.Actions.icelandic`.
 private extension Callouts.Actions {
-    static var testIcelandicWithPeriodCluster: Self {
+    static var testIcelandicPeriodFlickOnly: Self {
         var actions = Self.english
-        let overrides = Self(characters: [
-            ".": ".,?!@#:;-",
-        ])
-        actions.actionsDictionary.merge(overrides.actionsDictionary) { _, new in new }
+        actions.actionsDictionary[.character(".")] = []
+        return actions
+    }
+}
+
+/// Mirrors `LyklabordIPhoneLayoutService.insertLanguageModeKey`.
+private let testModeKey = KeyboardAction.custom(named: "lyklabord.mode")
+
+private func insertTestLanguageModeKey(_ actions: inout KeyboardAction.Row) {
+    guard !actions.contains(testModeKey) else { return }
+    if let spaceIndex = actions.firstIndex(of: .space) {
+        actions.insert(testModeKey, at: spaceIndex)
+        return
+    }
+    if let domainIndex = actions.firstIndex(where: {
+        if case .urlDomain = $0 { return true }
+        if case .text = $0 { return true }
+        return false
+    }) {
+        actions.insert(testModeKey, at: domainIndex)
+    }
+}
+
+/// Mirrors production: mode key on alphabetic + email/url/webSearch.
+class TestModeKeyLayoutService: KeyboardLayout.iPhoneLayoutService {
+    override func bottomActions(for context: KeyboardContext) -> KeyboardAction.Row {
+        var actions = super.bottomActions(for: context)
+        switch context.keyboardType {
+        case .alphabetic, .email, .url, .webSearch:
+            insertTestLanguageModeKey(&actions)
+        default:
+            break
+        }
         return actions
     }
 }
@@ -135,17 +164,76 @@ class KeyboardLayout_BottomRowAffordanceTests: XCTestCase {
     }
 
 
-    // MARK: - Callout cluster
+    // MARK: - Period callout
 
-    func testPeriodKeyCalloutActionsContainTheSwiftKeyCluster() {
-        let actions = Callouts.Actions.testIcelandicWithPeriodCluster
-        let callout = actions.actions(for: .character("."))
-
-        let expectedChars: [String] = [".", ",", "?", "!", "@", "#", ":", ";", "-"]
+    func testPeriodKeyHasNoActionCallout() {
+        let actions = Callouts.Actions.testIcelandicPeriodFlickOnly
         XCTAssertEqual(
-            callout,
-            expectedChars.map(KeyboardAction.character),
-            "period must be first/nearest, matching the design in PLAN.md"
+            actions.actions(for: .character(".")),
+            Optional<[KeyboardAction]>([]),
+            "period is flick-only; other marks live on the 123 board"
+        )
+        XCTAssertFalse(
+            Callouts.Actions.english.actions(for: .character("."))?.isEmpty ?? true,
+            "sanity: stock English still ships a period callout we must suppress"
+        )
+    }
+
+    // MARK: - Language key on URL / email / web-search
+
+    func testLanguageModeKeyIsInsertedOnUrlEmailAndWebSearch() {
+        let service = TestModeKeyLayoutService(
+            alphabeticInputSet: icelandicInputSet,
+            numericInputSet: .numeric,
+            symbolicInputSet: .symbolic
+        )
+        let context = makeContext(device: .phone)
+
+        context.keyboardType = .url
+        XCTAssertTrue(
+            service.keyboardLayout(for: context).itemRows.last?.map(\.action)
+                .contains(testModeKey) == true,
+            "Safari URL board must keep ÍS/EN"
+        )
+
+        context.keyboardType = .email
+        XCTAssertTrue(
+            service.keyboardLayout(for: context).itemRows.last?.map(\.action)
+                .contains(testModeKey) == true,
+            "email board must keep ÍS/EN"
+        )
+
+        context.keyboardType = .webSearch
+        XCTAssertTrue(
+            service.keyboardLayout(for: context).itemRows.last?.map(\.action)
+                .contains(testModeKey) == true
+        )
+
+        context.keyboardType = .numeric
+        XCTAssertFalse(
+            service.keyboardLayout(for: context).itemRows.last?.map(\.action)
+                .contains(testModeKey) == true,
+            "123 board is temporary — no language key"
+        )
+    }
+
+    func testLanguageModeKeySitsBeforeSpaceOrUrlDomain() {
+        var withSpace: KeyboardAction.Row = [
+            .keyboardType(.numeric), .nextKeyboard, .space, .character("@"), .primary(.return)
+        ]
+        insertTestLanguageModeKey(&withSpace)
+        XCTAssertEqual(
+            withSpace,
+            [.keyboardType(.numeric), .nextKeyboard, testModeKey, .space, .character("@"), .primary(.return)]
+        )
+
+        var urlRow: KeyboardAction.Row = [
+            .keyboardType(.numeric), .nextKeyboard, .urlDomain, .character("/"), .text(".com"), .primary(.return)
+        ]
+        insertTestLanguageModeKey(&urlRow)
+        XCTAssertEqual(
+            urlRow,
+            [.keyboardType(.numeric), .nextKeyboard, testModeKey, .urlDomain, .character("/"), .text(".com"), .primary(.return)]
         )
     }
 }
