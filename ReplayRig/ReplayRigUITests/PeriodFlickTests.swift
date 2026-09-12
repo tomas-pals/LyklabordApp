@@ -2,7 +2,7 @@
 //  PeriodFlickTests.swift
 //  ReplayRigUITests
 //
-//  Quick swipe on the period key: left = comma, right = question mark.
+//  Period key flicks: left = comma, right = ?, up = !.
 //  PeriodFlick.swift is compiled into this bundle (KeyboardExt has no
 //  unit-test target).
 //
@@ -23,8 +23,15 @@ final class PeriodFlickTests: XCTestCase {
         XCTAssertEqual(flick?.character, "?")
     }
 
-    func testShortOrVerticalMotionIsIgnored() {
+    func testUpSwipeIsExclamationMark() {
+        let flick = PeriodFlick.resolve(dx: 2, dy: -30)
+        XCTAssertEqual(flick, .exclamationMark)
+        XCTAssertEqual(flick?.character, "!")
+    }
+
+    func testShortOrDownwardMotionIsIgnored() {
         XCTAssertNil(PeriodFlick.resolve(dx: 8, dy: 0))
         XCTAssertNil(PeriodFlick.resolve(dx: 0, dy: 50))
+        XCTAssertNil(PeriodFlick.resolve(dx: 0, dy: -8))
     }
 }
