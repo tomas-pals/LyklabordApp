@@ -26,13 +26,38 @@ The private key is expected at
 commit the `.p8` file. The identifiers above are configuration, not the
 private credential.
 
-## GitHub Actions
+## Xcode Cloud (preferred)
 
-`.github/workflows/testflight.yml` runs `scripts/testflight-release.sh` on
-push to `main` (skips docs/site/research/store) and via **Run workflow**.
+Repo-side hooks live in `ci_scripts/`:
 
-Required secret: `APP_STORE_CONNECT_API_KEY` (the `.p8` PEM). Optional
-overrides: `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`.
+| Script | When | What |
+| --- | --- | --- |
+| `ci_post_clone.sh` | after clone | `git lfs pull` + `xcodegen generate` |
+| `ci_pre_xcodebuild.sh` | before archive | `agvtool new-version -all $CI_BUILD_NUMBER` (app + keyboard) |
+| `ci_post_xcodebuild.sh` | after archive | reject mismatched app/appex versions |
+
+Xcode Cloud workflows themselves are created once in Xcode / App Store
+Connect (not YAML in git). Account Holder or Admin on team `RDC8539AWM`:
+
+1. Mac: `brew install xcodegen && xcodegen generate && open Lyklabord.xcodeproj`
+2. Xcode → **Integrate → Xcode Cloud → Create Workflow** (grant GitHub access
+   to this repo)
+3. Workflow:
+   - Start condition: branch `main` changes
+   - Archive: iOS, Release, scheme **Lyklabord**
+   - Post-action: TestFlight Internal Testing → **Innri prófun**
+   - Xcode: latest 26+
+4. App Store Connect → Xcode Cloud → Settings → **Next Build Number** ≥ 19
+   (project.yml is currently 18)
+
+First build is often 1h+ (cold caches). Later archives ~30–60 min against
+the 25h/month included quota.
+
+## GitHub Actions (manual fallback)
+
+`.github/workflows/testflight.yml` is **workflow_dispatch only** so it does
+not double-ship next to Xcode Cloud. Secret: `APP_STORE_CONNECT_API_KEY`
+(the `.p8` PEM).
 
 Local: `DRY_RUN=1 ./scripts/testflight-release.sh` prints the plan.
 A real local ship still uses the worktree flow below.

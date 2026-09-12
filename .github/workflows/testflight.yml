@@ -1,14 +1,8 @@
 name: TestFlight
 
+# Manual fallback only. Xcode Cloud is the ship path — a push trigger here
+# would double-upload to TestFlight.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "site/**"
-      - "docs/**"
-      - "research/**"
-      - "store/**"
-      - "*.md"
   workflow_dispatch:
     inputs:
       version:

@@ -16,6 +16,12 @@ settings:
     # every app binary; not a secret.
     DEVELOPMENT_TEAM: RDC8539AWM
     CODE_SIGN_STYLE: Automatic
+    # Shipping version lives once so the app and keyboard appex stay in
+    # lockstep (App Store rejects mismatched CFBundleShortVersionString /
+    # CFBundleVersion). ReplayHost overrides below. Xcode Cloud's
+    # CI_BUILD_NUMBER is applied to every target via ci_pre_xcodebuild.sh.
+    MARKETING_VERSION: "1.1"
+    CURRENT_PROJECT_VERSION: "18"
 
 packages:
   Learning:
@@ -130,8 +136,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.supermassiveapps.lyklabord
         PRODUCT_NAME: Lyklabord
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "18"
         # iPhone-only for v1 (iPad runs compatibility mode): the keyboard's
         # iPad layout is an uninvested surface — shipping it untested is a
         # review and reputation risk. Proper iPad support is a post-launch
@@ -249,10 +253,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.supermassiveapps.lyklabord.keyboard
         PRODUCT_NAME: LyklabordKeyboard
-        MARKETING_VERSION: "1.1"
-        # Keep in lockstep with the app target (App Store requires matching
-        # short versions; CFBundleVersion now flows from this setting).
-        CURRENT_PROJECT_VERSION: "18"
         # iPhone-only for v1 (iPad runs compatibility mode): the keyboard's
         # iPad layout is an uninvested surface — shipping it untested is a
         # review and reputation risk. Proper iPad support is a post-launch
@@ -348,6 +348,7 @@ targets:
 
 schemes:
   Lyklabord:
+    shared: true
     build:
       targets:
         Lyklabord: all
