@@ -50,8 +50,10 @@ extension AutocompleteContext {
 ///   the middle slot" holds with no exceptions.
 ///
 /// - **Alternatives** (left and right of centre) — the next-ranked
-///   candidates, in rank order. Long-press hides a suggestion for the
-///   current language (settings can restore it).
+///   candidates, in rank order. Swipe up or long-press hides a
+///   suggestion for the current language (settings can restore it).
+///   The centre commit chip is hidable too, including when it is the
+///   typed token (`.unknown`) with no armed autocorrect.
 ///
 /// An emoji match takes the right-hand alternative's place (KeyboardKit's
 /// `Autocomplete.Toolbar` drops one plain candidate when an `.emoji`

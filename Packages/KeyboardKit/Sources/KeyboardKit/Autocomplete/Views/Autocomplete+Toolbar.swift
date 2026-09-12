@@ -244,10 +244,11 @@ private extension Autocomplete.Toolbar {
 ///
 /// Interaction (device-only — no headless coverage): a normal tap always
 /// inserts the suggestion. When an ``Autocomplete/EjectAffordance`` is
-/// injected, a long-press arms an inline confirm pill — a red "Fela „orð"?"
-/// the user taps to hide the word for the current language, plus a cancel
-/// (✕). The verbatim/`.unknown` slot is never hidable (it is the typed
-/// literal, not a suggestion). A rebuilt bar auto-cancels a pending confirm.
+/// injected, a swipe-up or long-press arms an inline confirm pill — a red
+/// "Fela „orð"?" the user taps to hide the word for the current language,
+/// plus a cancel (✕). The far-left verbatim icon is a separate control
+/// and is not hidable; the centre commit chip is, even when it is the
+/// typed `.unknown` token. A rebuilt bar auto-cancels a pending confirm.
 struct ToolbarItemButton<Content: View>: View {
 
     let suggestion: Autocomplete.Suggestion
@@ -258,7 +259,7 @@ struct ToolbarItemButton<Content: View>: View {
     @State private var confirmingEject = false
 
     private var isHidable: Bool {
-        !suggestion.isUnknown && suggestion.type != .emoji && eject != nil
+        suggestion.isHidableFromDictionary && eject != nil
     }
 
     var body: some View {
@@ -292,11 +293,21 @@ struct ToolbarItemButton<Content: View>: View {
         .buttonStyle(.plain)
 
         if isHidable {
-            // A long-press arms the confirm without inserting the word; a
-            // plain tap still routes to `suggestionAction` above.
-            button.onLongPressGesture(minimumDuration: 0.45) {
-                confirmingEject = true
-            }
+            // Swipe up or long-press arms the confirm without inserting
+            // the word; a plain tap still routes to `suggestionAction`.
+            button
+                .onLongPressGesture(minimumDuration: 0.45) {
+                    confirmingEject = true
+                }
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 24)
+                        .onEnded { value in
+                            let dx = value.translation.width
+                            let dy = value.translation.height
+                            guard dy < -24, abs(dy) > abs(dx) else { return }
+                            confirmingEject = true
+                        }
+                )
         } else {
             button
         }

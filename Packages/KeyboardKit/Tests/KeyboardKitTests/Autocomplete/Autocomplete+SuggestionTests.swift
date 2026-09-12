@@ -23,6 +23,17 @@ final class Autocomplete_SuggestionTests: XCTestCase {
         }
     }
 
+    func testHidableFromDictionaryIncludesUnknownCommitSlot() {
+        XCTAssertTrue(
+            Autocomplete.Suggestion(text: "hello", type: .unknown).isHidableFromDictionary,
+            "centre commit is often .unknown once a character is typed"
+        )
+        XCTAssertTrue(Autocomplete.Suggestion(text: "hello", type: .regular).isHidableFromDictionary)
+        XCTAssertTrue(Autocomplete.Suggestion(text: "hello", type: .autocorrect).isHidableFromDictionary)
+        XCTAssertFalse(Autocomplete.Suggestion(text: "😊", type: .emoji).isHidableFromDictionary)
+        XCTAssertFalse(Autocomplete.Suggestion(text: "", type: .regular).isHidableFromDictionary)
+    }
+
     func testCanApplyAutocompleteCasing() {
         let suggestion = Autocomplete.Suggestion(text: "foo")
         XCTAssertEqual(suggestion.autocompleteCased(for: "word").text, "foo")

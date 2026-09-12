@@ -107,6 +107,18 @@ public extension Autocomplete.Suggestion {
         type == .unknown
     }
 
+    /// FORK PATCH (Lyklaborð): whether the suggestion bar can hide this
+    /// word from the current language's dictionary.
+    ///
+    /// The centre commit slot is often `.unknown` — that is the typed
+    /// token when nothing is armed, not the far-left verbatim icon.
+    /// Blocking `.unknown` made swipe-up / long-press work on the side
+    /// chips and on a next-word prediction (empty token), then fail as
+    /// soon as a character was typed. Emoji and empty labels stay out.
+    var isHidableFromDictionary: Bool {
+        type != .emoji && !text.isEmpty
+    }
+
     /// Adjust the ``text`` casing to match a certain word.
     func autocompleteCased(
         for word: String
