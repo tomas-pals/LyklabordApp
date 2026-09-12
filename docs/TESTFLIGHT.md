@@ -26,6 +26,17 @@ The private key is expected at
 commit the `.p8` file. The identifiers above are configuration, not the
 private credential.
 
+## GitHub Actions
+
+`.github/workflows/testflight.yml` runs `scripts/testflight-release.sh` on
+push to `main` (skips docs/site/research/store) and via **Run workflow**.
+
+Required secret: `APP_STORE_CONNECT_API_KEY` (the `.p8` PEM). Optional
+overrides: `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`.
+
+Local: `DRY_RUN=1 ./scripts/testflight-release.sh` prints the plan.
+A real local ship still uses the worktree flow below.
+
 ## 1. Preflight and choose the build number
 
 Start in a clean main checkout at the commit to release:
