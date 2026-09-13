@@ -265,7 +265,7 @@ private struct RecordingMailComposer: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
         let composer = MFMailComposeViewController()
         composer.mailComposeDelegate = context.coordinator
-        composer.setToRecipients(["jokull@solberg.is"])
+        composer.setToRecipients(["tommipals@gmail.com"])
         composer.setSubject("Lyklaborð upptaka \(session.id)")
         composer.setMessageBody(Strings.Developer.emailBody, isHTML: false)
         for url in session.fileURLs {
