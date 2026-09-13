@@ -5,7 +5,7 @@ and `research/tablestakes-roadmap.md §1`.
 
 App: bundle `com.supermassiveapps.lyklabord` (+ keyboard extension
 `com.supermassiveapps.lyklabord.keyboard`), personal Apple Developer team (Team ID
-`RDC8539AWM`). Commercial model: base keyboard free forever; **"Lyklaborð+"**
+`45BXWF6V3P`, tommipals@gmail.com). Commercial model: base keyboard free forever; **"Lyklaborð+"**
 is a $19/year auto-renewable subscription gating personal-vocabulary + typo
 learning (learned words, dictionary editor, iCloud sync). See
 `store/README.md` for the full ASC recreation + subscription setup runbook.
@@ -182,11 +182,9 @@ combining them draws both. Preemptive answers, ready to paste or adapt:
   `com.supermassiveapps.lyklabord.keyboard` — confirmed against `project.yml`.
 - App Group `group.com.supermassiveapps.lyklabord`, CloudKit container
   `iCloud.com.supermassiveapps.lyklabord` — confirmed against `project.yml`.
-- Apple Developer team: personal team, Team ID `RDC8539AWM` (previously an
-  org team; the old ASC record on that team, Apple ID `6791665837`, bundle
-  `is.lyklabord.ios`, is being deleted and replaced — see `store/README.md`
-  "Personal team migration").
-- Repo name in URLs is **LyklabordApp** (`github.com/jokull/LyklabordApp`) —
+- Apple Developer team: Tómas Pálsson, Team ID `45BXWF6V3P`
+  (tommipals@gmail.com).
+- Repo name in URLs is **LyklabordApp** (`github.com/tomas-pals/LyklabordApp`) —
   confirmed current via `git remote -v`.
 - **Primary language: English (U.S.).** Correction from an earlier draft of
   this file, which recommended Icelandic as primary — App Store Connect does

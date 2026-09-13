@@ -8,23 +8,23 @@ Run the build in a detached scratch worktree. The archive phase stamps
 `App/BuildInfo.swift`, and isolating that write keeps the main checkout clean
 and ensures the stamp describes the exact commit being shipped.
 
-## Fixed App Store Connect identifiers
+## App Store Connect identifiers
+
+This fork ships on **Tómas Pálsson's** team. Jökull's live listing
+(`6792012916` / `RDC8539AWM`) is a different account.
 
 | Item | Value |
 | --- | --- |
-| App | Lyklaborð (`6792012916`) |
+| Account | tommipals@gmail.com |
+| Team ID | `45BXWF6V3P` |
 | Bundle ID | `com.supermassiveapps.lyklabord` |
-| Team ID | `RDC8539AWM` |
-| API account | `lyklabord` |
-| API key ID | `H8RC4UN83P` |
-| API issuer ID | `bf2219f6-0d8f-4415-8449-1bef292d2146` |
-| Internal group | Innri prófun (`6dc2522d-7486-4787-b8b9-2b7b221fd845`) |
-| External group | Vinir (`12ddcc4e-e5d1-4224-9ac7-484d7739b655`) |
+| Keyboard | `com.supermassiveapps.lyklabord.keyboard` |
+| App ID | create the ASC record, then set `APP_ID` |
+| API key | Users and Access → Integrations → mint a `.p8`; set `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_PATH` |
+| TestFlight groups | create Internal (and optional External); set `INTERNAL_GROUP_ID` / `EXTERNAL_GROUP_ID` |
 
-The private key is expected at
-`/Users/jokull/.appstoreconnect/private_keys/AuthKey_H8RC4UN83P.p8`. Never
-commit the `.p8` file. The identifiers above are configuration, not the
-private credential.
+Never commit the `.p8`. If Apple rejects the bundle ID, it's still registered
+on Jökull's team — transfer the app, or pick new identifiers.
 
 ## Xcode Cloud (preferred)
 
@@ -37,17 +37,21 @@ Repo-side hooks live in `ci_scripts/`:
 | `ci_post_xcodebuild.sh` | after archive | reject mismatched app/appex versions |
 
 Xcode Cloud workflows themselves are created once in Xcode / App Store
-Connect (not YAML in git). Account Holder or Admin on team `RDC8539AWM`:
+Connect (not YAML in git). Sign into Xcode as **tommipals@gmail.com**
+(team `45BXWF6V3P`):
 
-1. Mac: `brew install xcodegen && xcodegen generate && open Lyklabord.xcodeproj`
-2. Xcode → **Integrate → Xcode Cloud → Create Workflow** (grant GitHub access
-   to this repo)
-3. Workflow:
+1. Developer portal: register App ID, keyboard App ID, App Group, iCloud
+   container (or let automatic signing create them on first archive)
+2. Mac: `brew install xcodegen && xcodegen generate && open Lyklabord.xcodeproj`
+   — confirm the selected team is `45BXWF6V3P`
+3. Xcode → **Integrate → Xcode Cloud → Create Workflow** (grant GitHub access
+   to `tomas-pals/LyklabordApp`)
+4. Workflow:
    - Start condition: branch `main` changes
    - Archive: iOS, Release, scheme **Lyklabord**
-   - Post-action: TestFlight Internal Testing → **Innri prófun**
+   - Post-action: TestFlight Internal Testing → your Internal group
    - Xcode: latest 26+
-4. App Store Connect → Xcode Cloud → Settings → **Next Build Number** ≥ 19
+5. App Store Connect → Xcode Cloud → Settings → **Next Build Number** ≥ 19
    (project.yml is currently 18)
 
 First build is often 1h+ (cold caches). Later archives ~30–60 min against
@@ -56,8 +60,10 @@ the 25h/month included quota.
 ## GitHub Actions (manual fallback)
 
 `.github/workflows/testflight.yml` is **workflow_dispatch only** so it does
-not double-ship next to Xcode Cloud. Secret: `APP_STORE_CONNECT_API_KEY`
-(the `.p8` PEM).
+not double-ship next to Xcode Cloud. Secrets (all required):
+`APP_STORE_CONNECT_API_KEY` (PEM), `APP_STORE_CONNECT_API_KEY_ID`,
+`APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_APP_ID`. Optional:
+`APP_STORE_CONNECT_INTERNAL_GROUP_ID`.
 
 Local: `DRY_RUN=1 ./scripts/testflight-release.sh` prints the plan.
 A real local ship still uses the worktree flow below.
@@ -67,13 +73,12 @@ A real local ship still uses the worktree flow below.
 Start in a clean main checkout at the commit to release:
 
 ```bash
-asccli auth use lyklabord
 asccli auth check --output table
 git status --short
 RELEASE_VERSION=1.1
 
 asccli builds next-number \
-  --app-id 6792012916 \
+  --app-id "$APP_ID" \
   --version "$RELEASE_VERSION" \
   --platform ios \
   --output table
@@ -104,9 +109,7 @@ inside the scratch worktree.
 ## 3. Archive with API-key authentication
 
 ```bash
-ASC_KEY_PATH="/Users/jokull/.appstoreconnect/private_keys/AuthKey_H8RC4UN83P.p8"
-ASC_KEY_ID="H8RC4UN83P"
-ASC_ISSUER_ID="bf2219f6-0d8f-4415-8449-1bef292d2146"
+# ASC_KEY_PATH / ASC_KEY_ID / ASC_ISSUER_ID from your team's AuthKey_*.p8
 mkdir -p build
 set -o pipefail
 
@@ -178,7 +181,7 @@ cp build/export/*.ipa \
   "$RELEASE_ROOT/.build/testflight-$RELEASE_VERSION-$RELEASE_BUILD/Lyklaborð-$RELEASE_VERSION-$RELEASE_BUILD.ipa"
 
 asccli builds upload \
-  --app-id 6792012916 \
+  --app-id "$APP_ID" \
   --file "$RELEASE_ROOT/.build/testflight-$RELEASE_VERSION-$RELEASE_BUILD/Lyklaborð-$RELEASE_VERSION-$RELEASE_BUILD.ipa" \
   --version "$RELEASE_VERSION" \
   --build-number "$RELEASE_BUILD" \
@@ -193,7 +196,7 @@ second terminal:
 
 ```bash
 asccli builds uploads list \
-  --app-id 6792012916 \
+  --app-id "$APP_ID" \
   --output table
 ```
 
@@ -205,7 +208,7 @@ resolve export compliance automatically. Verify it rather than assuming:
 
 ```bash
 asccli builds list \
-  --app-id 6792012916 \
+  --app-id "$APP_ID" \
   --platform ios \
   --version "$RELEASE_VERSION" \
   --limit 20 \
@@ -234,12 +237,12 @@ asccli builds update-beta-notes \
 
 asccli builds add-beta-group \
   --build-id "$ASC_BUILD_ID" \
-  --beta-group-id 6dc2522d-7486-4787-b8b9-2b7b221fd845 \
+  --beta-group-id "$INTERNAL_GROUP_ID" \
   --output table
 
 asccli builds add-beta-group \
   --build-id "$ASC_BUILD_ID" \
-  --beta-group-id 12ddcc4e-e5d1-4224-9ac7-484d7739b655 \
+  --beta-group-id "$EXTERNAL_GROUP_ID" \
   --output table
 ```
 

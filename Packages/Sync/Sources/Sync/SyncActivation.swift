@@ -26,7 +26,7 @@ public enum SyncActivation {
     ///   4. Set `ITSAppUsesNonExemptEncryption` appropriately (v1-blocker
     ///      list: CryptoKit sync is exempt-standard-crypto, but the key
     ///      must be declared).
-    public static let isCloudKitProvisioned = true  // activated 2026-07-16: container registered on team RDC8539AWM
+    public static let isCloudKitProvisioned = true  // container: register on team 45BXWF6V3P
 
     /// The CloudKit container identifier this product will use.
     /// TODO(provisioning): this is where the real `CKContainer` gets

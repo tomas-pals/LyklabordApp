@@ -76,7 +76,7 @@ SubscriptionManager                       UserDefaults suite         LyklabordAu
      (`itms-apps://apps.apple.com/account/subscriptions`) lives in
      Settings → Áskrift.
 4. **Paid Applications agreement** must be signed on the personal team
-   (RDC8539AWM) with banking/tax filled in before the product can be
+   (45BXWF6V3P) with banking/tax filled in before the product can be
    created.
 5. **Review notes** (paste into ASC review notes):
    - The app is open source; the subscription unlocks the personal

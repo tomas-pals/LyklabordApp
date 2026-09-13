@@ -5,8 +5,15 @@ Binary/TestFlight releases use the reproducible API-key flow in
 [`docs/TESTFLIGHT.md`](../docs/TESTFLIGHT.md); live App Store Connect state is
 not represented by this asset directory.
 
-The project moved from an org Apple Developer team to **Jökull's personal
-team (Team ID `RDC8539AWM`)**, with new identifiers: app bundle
+This fork ships on **Tómas Pálsson's** team (`45BXWF6V3P`,
+tommipals@gmail.com). Bundle IDs stay `com.supermassiveapps.lyklabord` (+
+`.keyboard` / App Group / iCloud container). If those identifiers are still
+registered on Jökull's team (`RDC8539AWM`, App Store `6792012916`), either
+**transfer the app** or register new bundle IDs — Apple will not let two
+teams own the same bundle ID.
+
+Historical note: the project moved from an org team to **Jökull's personal
+team (Team ID `RDC8539AWM`)**, with identifiers: app bundle
 `com.supermassiveapps.lyklabord`, keyboard extension `com.supermassiveapps.lyklabord.keyboard`,
 App Group `group.com.supermassiveapps.lyklabord`, CloudKit container
 `iCloud.com.supermassiveapps.lyklabord`. The old App Store Connect record (Apple ID
@@ -133,8 +140,8 @@ before you start deleting anything.
    > record is deleted, any other developer (on any team) can reserve that
    > name. Do not leave the account in a deleted-but-not-recreated state —
    > go straight to step 3.
-3. **Immediately create the new app record** on the personal team
-   (`RDC8539AWM`):
+3. **Immediately create the new app record** on Tómas's team
+   (`45BXWF6V3P`):
    - Register identifiers first in Certificates, Identifiers & Profiles (or
      let Xcode automatic signing do it on first archive with the personal
      team selected): app bundle `com.supermassiveapps.lyklabord`, keyboard extension

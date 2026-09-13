@@ -3,11 +3,11 @@
 # Local: isolated git worktree. CI: the Actions checkout is already isolated.
 set -euo pipefail
 
-APP_ID="${APP_ID:-6792012916}"
-ASC_KEY_ID="${ASC_KEY_ID:-H8RC4UN83P}"
-ASC_ISSUER_ID="${ASC_ISSUER_ID:-bf2219f6-0d8f-4415-8449-1bef292d2146}"
-INTERNAL_GROUP_ID="${INTERNAL_GROUP_ID:-6dc2522d-7486-4787-b8b9-2b7b221fd845}"
-EXTERNAL_GROUP_ID="${EXTERNAL_GROUP_ID:-12ddcc4e-e5d1-4224-9ac7-484d7739b655}"
+APP_ID="${APP_ID:-}"
+ASC_KEY_ID="${ASC_KEY_ID:-}"
+ASC_ISSUER_ID="${ASC_ISSUER_ID:-}"
+INTERNAL_GROUP_ID="${INTERNAL_GROUP_ID:-}"
+EXTERNAL_GROUP_ID="${EXTERNAL_GROUP_ID:-}"
 ASSIGN_INTERNAL="${ASSIGN_INTERNAL:-1}"
 ASSIGN_EXTERNAL="${ASSIGN_EXTERNAL:-0}"
 DRY_RUN="${DRY_RUN:-0}"
@@ -31,13 +31,9 @@ marketing_version() {
 import re
 from pathlib import Path
 text = Path("project.yml").read_text()
-m = re.search(
-    r'PRODUCT_BUNDLE_IDENTIFIER:\s+com\.supermassiveapps\.lyklabord\n.*?MARKETING_VERSION:\s+"([^"]+)"',
-    text,
-    re.S,
-)
+m = re.search(r'(?m)^    MARKETING_VERSION:\s+"([^"]+)"', text)
 if not m:
-    raise SystemExit("could not read MARKETING_VERSION for com.supermassiveapps.lyklabord")
+    raise SystemExit("could not read project.yml settings.base MARKETING_VERSION")
 print(m.group(1))
 PY
 }
@@ -80,11 +76,14 @@ if [[ -z "${BETA_NOTES:-}" ]]; then
 fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo "dry-run: version=${RELEASE_VERSION} build=${RELEASE_BUILD:-<next-number>} notes=${BETA_NOTES}"
-  echo "dry-run: would xcodegen + archive + export + asccli upload app ${APP_ID}"
+  echo "dry-run: team=45BXWF6V3P version=${RELEASE_VERSION} build=${RELEASE_BUILD:-<next-number>} notes=${BETA_NOTES}"
+  echo "dry-run: would xcodegen + archive + export + asccli upload app ${APP_ID:-<APP_ID>}"
   exit 0
 fi
 
+: "${APP_ID:?set APP_ID to your App Store Connect app id}"
+: "${ASC_KEY_ID:?set ASC_KEY_ID}"
+: "${ASC_ISSUER_ID:?set ASC_ISSUER_ID}"
 : "${ASC_KEY_PATH:?set ASC_KEY_PATH to the AuthKey_*.p8 file}"
 if [[ ! -f "$ASC_KEY_PATH" ]]; then
   echo "ASC_KEY_PATH not a file: $ASC_KEY_PATH" >&2
@@ -204,14 +203,14 @@ raise SystemExit("could not parse build id from upload.json")
   --notes "$BETA_NOTES" \
   --output table || true
 
-if [[ "$ASSIGN_INTERNAL" == "1" ]]; then
+if [[ "$ASSIGN_INTERNAL" == "1" && -n "$INTERNAL_GROUP_ID" ]]; then
   "$ASC" builds add-beta-group \
     --build-id "$ASC_BUILD_ID" \
     --beta-group-id "$INTERNAL_GROUP_ID" \
     --output table
 fi
 
-if [[ "$ASSIGN_EXTERNAL" == "1" ]]; then
+if [[ "$ASSIGN_EXTERNAL" == "1" && -n "$EXTERNAL_GROUP_ID" ]]; then
   "$ASC" builds add-beta-group \
     --build-id "$ASC_BUILD_ID" \
     --beta-group-id "$EXTERNAL_GROUP_ID" \

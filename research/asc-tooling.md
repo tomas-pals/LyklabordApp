@@ -1,7 +1,7 @@
 # App Store Connect automation tooling — 2026 state
 
 *Researched 2026-07-17. Goal: minimize clicks in the App Store Connect web UI for
-Lyklaborð (personal team `RDC8539AWM`, bundle `com.supermassiveapps.lyklabord`). Owner is a
+Lyklaborð (personal team `45BXWF6V3P`, bundle `com.supermassiveapps.lyklabord`). Owner is a
 solo dev on a local Mac — no CI, no org account, API key auth strongly preferred
 over interactive Apple ID sessions.*
 
@@ -175,13 +175,13 @@ build upload, every metadata edit, every screenshot, every subscription field
 - Deploy flow (fully scriptable, no Console button click needed):
   ```bash
   xcrun cktool export-schema \
-    --team-id RDC8539AWM \
+    --team-id 45BXWF6V3P \
     --container-id iCloud.com.supermassiveapps.lyklabord \
     --environment development \
     --file dev-schema.ckdb
 
   xcrun cktool import-schema \
-    --team-id RDC8539AWM \
+    --team-id 45BXWF6V3P \
     --container-id iCloud.com.supermassiveapps.lyklabord \
     --environment production \
     --file dev-schema.ckdb
@@ -283,11 +283,11 @@ asc subscription-offers create --subscription-id <SUB_ID> --territory USA \
 # but the README doesn't spell out every flag)
 
 # --- 5. CloudKit production schema deploy ---
-xcrun cktool save-token --team-id RDC8539AWM   # one-time, paste Management Token
-xcrun cktool export-schema --team-id RDC8539AWM \
+xcrun cktool save-token --team-id 45BXWF6V3P   # one-time, paste Management Token
+xcrun cktool export-schema --team-id 45BXWF6V3P \
   --container-id iCloud.com.supermassiveapps.lyklabord --environment development \
   --file /tmp/lyklabord-dev-schema.ckdb
-xcrun cktool import-schema --team-id RDC8539AWM \
+xcrun cktool import-schema --team-id 45BXWF6V3P \
   --container-id iCloud.com.supermassiveapps.lyklabord --environment production \
   --file /tmp/lyklabord-dev-schema.ckdb
 ```

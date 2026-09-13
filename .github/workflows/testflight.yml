@@ -10,7 +10,7 @@ on:
         required: false
         type: string
       assign_external:
-        description: Also add Vinir (external TestFlight)
+        description: Also add your External TestFlight group
         required: false
         type: boolean
         default: false
@@ -26,11 +26,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check App Store Connect key
+      - name: Check App Store Connect secrets
         run: |
-          if [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY }}" ]; then
-            echo "Add repo secret APP_STORE_CONNECT_API_KEY (AuthKey_H8RC4UN83P.p8 contents)."
-            echo "Key ID / issuer are already in docs/TESTFLIGHT.md."
+          if [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY }}" ] || \
+             [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" ] || \
+             [ -z "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" ] || \
+             [ -z "${{ secrets.APP_STORE_CONNECT_APP_ID }}" ]; then
+            echo "Need repo secrets: APP_STORE_CONNECT_API_KEY (PEM), _API_KEY_ID, _ISSUER_ID, _APP_ID."
+            echo "Mint the .p8 on team 45BXWF6V3P (tommipals@gmail.com)."
             exit 1
           fi
 
@@ -59,18 +62,19 @@ jobs:
       - name: Write API key
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         run: |
           set -euo pipefail
-          KEY_ID="${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
-          KEY_ID="${KEY_ID:-H8RC4UN83P}"
           mkdir -p "$HOME/.appstoreconnect/private_keys"
-          KEY="$HOME/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8"
+          KEY="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           printf '%s\n' "$APP_STORE_CONNECT_API_KEY" > "$KEY"
           chmod 600 "$KEY"
           echo "ASC_KEY_PATH=$KEY" >> "$GITHUB_ENV"
-          echo "ASC_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
-          ISSUER="${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
-          echo "ASC_ISSUER_ID=${ISSUER:-bf2219f6-0d8f-4415-8449-1bef292d2146}" >> "$GITHUB_ENV"
+          echo "ASC_KEY_ID=$ASC_KEY_ID" >> "$GITHUB_ENV"
+          echo "ASC_ISSUER_ID=${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" >> "$GITHUB_ENV"
+          echo "APP_ID=${{ secrets.APP_STORE_CONNECT_APP_ID }}" >> "$GITHUB_ENV"
+          echo "INTERNAL_GROUP_ID=${{ secrets.APP_STORE_CONNECT_INTERNAL_GROUP_ID }}" >> "$GITHUB_ENV"
+          echo "EXTERNAL_GROUP_ID=${{ secrets.APP_STORE_CONNECT_EXTERNAL_GROUP_ID }}" >> "$GITHUB_ENV"
 
       - name: Archive, export, upload
         env:
