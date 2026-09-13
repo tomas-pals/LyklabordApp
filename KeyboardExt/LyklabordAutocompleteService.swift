@@ -38,11 +38,11 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// the user begins typing. Inspect with Instruments' Points of Interest
     /// or Console, filtered to this subsystem/category.
     private static let coldStartSignposter = OSSignposter(
-        subsystem: "com.supermassiveapps.lyklabord",
+        subsystem: "is.palsson.lyklabord",
         category: "AutocompleteColdStart"
     )
     private static let coldStartLogger = Logger(
-        subsystem: "com.supermassiveapps.lyklabord",
+        subsystem: "is.palsson.lyklabord",
         category: "AutocompleteColdStart"
     )
     /// App Group metadata reads that do not belong on either the UI thread or
@@ -50,7 +50,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// recorder concerns; base typing starts with safe defaults while they
     /// resolve.
     private static let auxiliaryStateQueue = DispatchQueue(
-        label: "com.supermassiveapps.lyklabord.auxiliary-state",
+        label: "is.palsson.lyklabord.auxiliary-state",
         qos: .utility
     )
 
@@ -75,7 +75,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     ///   fit here because it also governed work the user is actively waiting
     ///   to see in the suggestion bar.
     private let queue = DispatchQueue(
-        label: "com.supermassiveapps.lyklabord.typeengine",
+        label: "is.palsson.lyklabord.typeengine",
         qos: .userInitiated
     )
 
@@ -398,7 +398,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     /// deferred '.'-apply even though KeyboardKit considers the cursor "at
     /// a new word" after the dot, and (b) verify against the live proxy
     /// text that the suggestion is not stale before applying.
-    static let pendingTokenInfoKey = "com.supermassiveapps.lyklabord.pendingToken"
+    static let pendingTokenInfoKey = "is.palsson.lyklabord.pendingToken"
 
     // Store filenames come from `Learning.LearningLanguage`, which both this
     // extension and the containing app read — there is one model file and one
@@ -407,7 +407,7 @@ final class LyklabordAutocompleteService: AutocompleteService {
     // MARK: - Init
 
     /// - Parameter appGroupId: the shared App Group
-    ///   (`KeyboardApp.lyklabord.appGroupId`, "group.com.supermassiveapps.lyklabord");
+    ///   (`KeyboardApp.lyklabord.appGroupId`, "group.is.palsson.lyklabord");
     ///   nil disables personal learning entirely (tests).
     init(appGroupId: String? = nil, activationStartedAt: TimeInterval? = nil) {
         let createdAt = AutocompleteColdStartTracker.now

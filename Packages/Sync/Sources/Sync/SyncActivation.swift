@@ -3,7 +3,7 @@ import Foundation
 /// CloudKit activation constants and the deliberate "not provisioned yet"
 /// gate.
 ///
-/// The CloudKit container ("iCloud.com.supermassiveapps.lyklabord") requires the paid-team
+/// The CloudKit container ("iCloud.is.palsson.lyklabord") requires the paid-team
 /// provisioning step (App ID + iCloud capability + container creation in
 /// the developer portal) which is deferred — see PLAN.md M3/M4. Until then
 /// the app wires `SyncEngine` to `UnactivatedCloudStore`, so every code
@@ -15,7 +15,7 @@ public enum SyncActivation {
 
     /// TODO(provisioning): flip to `true` once the paid Apple Developer
     /// team exists and the following steps are done:
-    ///   1. Create the iCloud container `iCloud.com.supermassiveapps.lyklabord` in the
+    ///   1. Create the iCloud container `iCloud.is.palsson.lyklabord` in the
     ///      developer portal.
     ///   2. Add the CloudKit capability + container to the APP target's
     ///      entitlements only (`App/Lyklabord.entitlements`) — the
@@ -31,7 +31,7 @@ public enum SyncActivation {
     /// The CloudKit container identifier this product will use.
     /// TODO(provisioning): this is where the real `CKContainer` gets
     /// activated — `CloudKitRecordStore(containerIdentifier:)` consumes it.
-    public static let containerIdentifier = "iCloud.com.supermassiveapps.lyklabord"
+    public static let containerIdentifier = "iCloud.is.palsson.lyklabord"
 
     /// Custom record zone in the user's PRIVATE database. A custom zone
     /// (not the default zone) so we get atomic operations and could adopt

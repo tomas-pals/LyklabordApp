@@ -52,9 +52,9 @@ final class TimedLastMileHarness {
     private let proxy = ProxySimulator(truncation: .none)
     private let requestSequencer = AutocompleteRequestSequencer()
     private let engineQueue = DispatchQueue(
-        label: "com.supermassiveapps.lyklabord.last-mile.engine", qos: .userInitiated)
+        label: "is.palsson.lyklabord.last-mile.engine", qos: .userInitiated)
     private let deliveryQueue = DispatchQueue(
-        label: "com.supermassiveapps.lyklabord.last-mile.delivery", qos: .userInitiated)
+        label: "is.palsson.lyklabord.last-mile.delivery", qos: .userInitiated)
     private let requestGroup = DispatchGroup()
     private let stateLock = NSLock()
 

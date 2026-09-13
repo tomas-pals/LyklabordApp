@@ -14,7 +14,7 @@ public struct HiddenSuggestionsStore {
 
     /// Key prefix. Language raw value (`is` / `en`) is appended.
     public static let defaultsKeyPrefix =
-        "com.supermassiveapps.lyklabord.settings.hiddenSuggestions."
+        "is.palsson.lyklabord.settings.hiddenSuggestions."
 
     public static func defaultsKey(for language: LearningLanguage) -> String {
         defaultsKeyPrefix + language.rawValue

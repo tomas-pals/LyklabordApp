@@ -10,8 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://lyklabord.solberg.is"><strong>lyklabord.solberg.is</strong></a> ·
-  <a href="https://apps.apple.com/app/id6792012916"><strong>Download free on the App Store</strong></a>
+  <a href="https://lyklabord.solberg.is"><strong>lyklabord.solberg.is</strong></a>
 </p>
 
 <p align="center">
@@ -62,7 +61,7 @@ xcodegen generate
 xcodebuild -scheme Lyklabord -destination 'generic/platform=iOS Simulator' build
 ```
 
-Requires Xcode 26+, iOS 18 deployment target. Tests: `swift test` in each package under `Packages/`.
+Requires Xcode 26+, iOS 18 deployment target. Tests: `swift test` in each package under `Packages/`. TestFlight / Xcode Cloud: [`docs/APPLE_SETUP.md`](docs/APPLE_SETUP.md).
 
 The typing engine runs headlessly on macOS — try it:
 
@@ -75,7 +74,7 @@ swift run -c release type-repl bench      # latency percentiles on the real lang
 
 ## Status
 
-Available on the [App Store](https://apps.apple.com/app/id6792012916). Layout, blended autocorrect/prediction, learning + dictionary editor, and SwiftKey import all work. See open items in the [table-stakes roadmap](research/tablestakes-roadmap.md).
+TestFlight / App Store on Tómas's team: [`docs/APPLE_SETUP.md`](docs/APPLE_SETUP.md). See open items in the [table-stakes roadmap](research/tablestakes-roadmap.md).
 
 ## Data & licenses
 

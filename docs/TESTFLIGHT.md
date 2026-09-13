@@ -1,5 +1,7 @@
 # Headless TestFlight release
 
+**First-time Apple / Xcode Cloud setup:** [`APPLE_SETUP.md`](APPLE_SETUP.md).
+
 Lyklaborð can be archived, cloud-signed, exported, and uploaded without an
 active Xcode GUI login. `xcodebuild` authenticates directly with the App Store
 Connect API key; `asccli` handles the App Store Connect operations.
@@ -10,21 +12,20 @@ and ensures the stamp describes the exact commit being shipped.
 
 ## App Store Connect identifiers
 
-This fork ships on **Tómas Pálsson's** team. Jökull's live listing
-(`6792012916` / `RDC8539AWM`) is a different account.
+This fork ships on **Tómas Pálsson's** team. Do not reuse Jökull's ASC
+record, API key, or TestFlight groups.
 
 | Item | Value |
 | --- | --- |
 | Account | tommipals@gmail.com |
 | Team ID | `45BXWF6V3P` |
-| Bundle ID | `com.supermassiveapps.lyklabord` |
-| Keyboard | `com.supermassiveapps.lyklabord.keyboard` |
+| Bundle ID | `is.palsson.lyklabord` |
+| Keyboard | `is.palsson.lyklabord.keyboard` |
 | App ID | create the ASC record, then set `APP_ID` |
 | API key | Users and Access → Integrations → mint a `.p8`; set `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_PATH` |
 | TestFlight groups | create Internal (and optional External); set `INTERNAL_GROUP_ID` / `EXTERNAL_GROUP_ID` |
 
-Never commit the `.p8`. If Apple rejects the bundle ID, it's still registered
-on Jökull's team — transfer the app, or pick new identifiers.
+Never commit the `.p8`.
 
 ## Xcode Cloud (preferred)
 
@@ -51,8 +52,8 @@ Connect (not YAML in git). Sign into Xcode as **tommipals@gmail.com**
    - Archive: iOS, Release, scheme **Lyklabord**
    - Post-action: TestFlight Internal Testing → your Internal group
    - Xcode: latest 26+
-5. App Store Connect → Xcode Cloud → Settings → **Next Build Number** ≥ 19
-   (project.yml is currently 18)
+5. App Store Connect → Xcode Cloud → Settings → **Next Build Number** = `1`
+   (new app record; `project.yml` is `1`)
 
 First build is often 1h+ (cold caches). Later archives ~30–60 min against
 the 25h/month included quota.

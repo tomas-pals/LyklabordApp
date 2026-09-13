@@ -7,7 +7,7 @@
 #   1. Build the app + ReplayRig test bundle for the iPhone 16 Pro Max sim.
 #   2. Install Lyklabord(.appex) + ReplayHost; enable the keyboard by
 #      seeding com.apple.Preferences AppleKeyboards with the REAL appex bundle
-#      id `com.supermassiveapps.lyklabord.keyboard` (replay-run.sh's historical
+#      id `is.palsson.lyklabord.keyboard` (replay-run.sh's historical
 #      `…lyklabord.app.keyboard` was wrong — that's why the trick "never
 #      worked"), then reboot the sim so SpringBoard reloads it.
 #   3. For each shot, run one ScreenshotUITests test (XCUITest taps the real
@@ -55,10 +55,10 @@ APP_HOST="$(find "$DD/Build/Products" -maxdepth 2 -name 'ReplayHost.app' | head 
 xcrun simctl install "$UDID" "$APP_MAIN"
 xcrun simctl install "$UDID" "$APP_HOST"
 if ! xcrun simctl spawn "$UDID" defaults read com.apple.Preferences AppleKeyboards 2>/dev/null \
-    | grep -q "com.supermassiveapps.lyklabord.keyboard"; then
+    | grep -q "is.palsson.lyklabord.keyboard"; then
   xcrun simctl spawn "$UDID" defaults write com.apple.Preferences AppleKeyboardsExpanded -int 1
   xcrun simctl spawn "$UDID" defaults write com.apple.Preferences AppleKeyboards \
-    -array "en_US@sw=QWERTY;hw=Automatic" "com.supermassiveapps.lyklabord.keyboard"
+    -array "en_US@sw=QWERTY;hw=Automatic" "is.palsson.lyklabord.keyboard"
   echo "   seeded AppleKeyboards; rebooting sim"
   xcrun simctl shutdown "$UDID"; xcrun simctl boot "$UDID"
   xcrun simctl bootstatus "$UDID" -b >/dev/null

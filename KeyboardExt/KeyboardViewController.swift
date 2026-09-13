@@ -25,7 +25,7 @@ extension KeyboardApp {
     static var lyklabord: Self {
         .init(
             name: "Lyklaborð",
-            appGroupId: "group.com.supermassiveapps.lyklabord",
+            appGroupId: "group.is.palsson.lyklabord",
             locales: [.icelandic]
         )
     }

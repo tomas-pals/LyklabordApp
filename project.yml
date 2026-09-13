@@ -1,6 +1,6 @@
 name: Lyklabord
 options:
-  bundleIdPrefix: com.supermassiveapps.lyklabord
+  bundleIdPrefix: is.palsson.lyklabord
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -11,8 +11,8 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
     ENABLE_USER_SCRIPT_SANDBOXING: NO
     # Tómas Pálsson (tommipals@gmail.com). Provisions the App Group
-    # (group.com.supermassiveapps.lyklabord) and the
-    # iCloud.com.supermassiveapps.lyklabord CloudKit container. Team IDs ship
+    # (group.is.palsson.lyklabord) and the
+    # iCloud.is.palsson.lyklabord CloudKit container. Team IDs ship
     # inside every app binary; not a secret.
     DEVELOPMENT_TEAM: 45BXWF6V3P
     CODE_SIGN_STYLE: Automatic
@@ -21,7 +21,7 @@ settings:
     # CFBundleVersion). ReplayHost overrides below. Xcode Cloud's
     # CI_BUILD_NUMBER is applied to every target via ci_pre_xcodebuild.sh.
     MARKETING_VERSION: "1.1"
-    CURRENT_PROJECT_VERSION: "18"
+    CURRENT_PROJECT_VERSION: "1"
 
 packages:
   Learning:
@@ -99,9 +99,9 @@ targets:
         # (App/RecordingStore.swift) are user-visible AND user-deletable —
         # the OTA export path, no servers (see docs/PRIVACY.md "Þróunarhamur").
         # Document-scope-public is what makes the container a top-level folder
-        # in Files > iCloud Drive. Same container as CloudKit (iCloud.com.supermassiveapps.lyklabord).
+        # in Files > iCloud Drive. Same container as CloudKit (iCloud.is.palsson.lyklabord).
         NSUbiquitousContainers:
-          iCloud.com.supermassiveapps.lyklabord:
+          iCloud.is.palsson.lyklabord:
             NSUbiquitousContainerIsDocumentScopePublic: true
             NSUbiquitousContainerName: Lyklaborð
             NSUbiquitousContainerSupportedFolderLevels: Any
@@ -109,11 +109,11 @@ targets:
       path: App/Lyklabord.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.supermassiveapps.lyklabord
+          - group.is.palsson.lyklabord
         # CloudKit: APP ONLY — the keyboard extension must never gain
         # network-capable entitlements (PLAN architecture invariant).
         com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.supermassiveapps.lyklabord
+          - iCloud.is.palsson.lyklabord
         # iCloud Documents (ubiquity) — APP ONLY, same container. Lets the app
         # write dev-mode sessions into the user's own iCloud Drive for OTA
         # pickup on the Mac. The keyboard extension keeps ZERO iCloud/network
@@ -123,7 +123,7 @@ targets:
         # the provisioning profile — CI sim builds (CODE_SIGNING_ALLOWED=NO)
         # ignore entitlements entirely and are unaffected.
         com.apple.developer.ubiquity-container-identifiers:
-          - iCloud.com.supermassiveapps.lyklabord
+          - iCloud.is.palsson.lyklabord
         com.apple.developer.icloud-services:
           - CloudKit
           # CloudDocuments is what actually runs iCloud Drive document sync
@@ -134,7 +134,7 @@ targets:
           - CloudDocuments
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.supermassiveapps.lyklabord
+        PRODUCT_BUNDLE_IDENTIFIER: is.palsson.lyklabord
         PRODUCT_NAME: Lyklabord
         # iPhone-only for v1 (iPad runs compatibility mode): the keyboard's
         # iPad layout is an uninvested surface — shipping it untested is a
@@ -248,10 +248,10 @@ targets:
       path: KeyboardExt/LyklabordKeyboard.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.supermassiveapps.lyklabord
+          - group.is.palsson.lyklabord
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.supermassiveapps.lyklabord.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: is.palsson.lyklabord.keyboard
         PRODUCT_NAME: LyklabordKeyboard
         # iPhone-only for v1 (iPad runs compatibility mode): the keyboard's
         # iPad layout is an uninvested surface — shipping it untested is a
@@ -302,7 +302,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.supermassiveapps.lyklabord.replayhost
+        PRODUCT_BUNDLE_IDENTIFIER: is.palsson.lyklabord.replayhost
         PRODUCT_NAME: ReplayHost
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -341,7 +341,7 @@ targets:
         product: ISEmojiView
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.supermassiveapps.lyklabord.replayhost.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: is.palsson.lyklabord.replayhost.uitests
         PRODUCT_NAME: ReplayRigUITests
         TEST_TARGET_NAME: ReplayHost
         GENERATE_INFOPLIST_FILE: YES

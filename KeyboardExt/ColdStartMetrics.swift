@@ -192,11 +192,11 @@ final class AutocompleteColdStartRecorder {
     private static let maximumJournalBytes = 256 * 1_024
     private static let retainedLineCount = 256
     private static let ioQueue = DispatchQueue(
-        label: "com.supermassiveapps.lyklabord.cold-start-metrics",
+        label: "is.palsson.lyklabord.cold-start-metrics",
         qos: .utility
     )
     private static let logger = Logger(
-        subsystem: "com.supermassiveapps.lyklabord",
+        subsystem: "is.palsson.lyklabord",
         category: "AutocompleteColdStart"
     )
 

@@ -139,7 +139,7 @@ final class ScreenshotUITests: XCTestCase {
     /// Orðasafn — an app screen, not the keyboard. Run AFTER shots 2–4 so the
     /// learning store has honestly-learned words to show.
     func testShot05Dictionary() throws {
-        let app = XCUIApplication(bundleIdentifier: "com.supermassiveapps.lyklabord")
+        let app = XCUIApplication(bundleIdentifier: "is.palsson.lyklabord")
         app.launch()
         let tab = app.tabBars.buttons["Orðasafn"]
         XCTAssertTrue(tab.waitForExistence(timeout: 10), "Orðasafn tab not found")
