@@ -1,7 +1,7 @@
 # App Store Connect automation tooling — 2026 state
 
 *Researched 2026-07-17. Goal: minimize clicks in the App Store Connect web UI for
-Lyklaborð (personal team `45BXWF6V3P`, bundle `is.palsson.lyklabord`). Owner is a
+Lyklaborð (personal team `45BXWF6V3P`, bundle `com.supermassiveapps.lyklabord`). Owner is a
 solo dev on a local Mac — no CI, no org account, API key auth strongly preferred
 over interactive Apple ID sessions.*
 
@@ -176,13 +176,13 @@ build upload, every metadata edit, every screenshot, every subscription field
   ```bash
   xcrun cktool export-schema \
     --team-id 45BXWF6V3P \
-    --container-id iCloud.is.palsson.lyklabord \
+    --container-id iCloud.com.supermassiveapps.lyklabord \
     --environment development \
     --file dev-schema.ckdb
 
   xcrun cktool import-schema \
     --team-id 45BXWF6V3P \
-    --container-id iCloud.is.palsson.lyklabord \
+    --container-id iCloud.com.supermassiveapps.lyklabord \
     --environment production \
     --file dev-schema.ckdb
   ```
@@ -266,13 +266,13 @@ asc age-rating update --declaration-id <DECL_ID> ...   # per app-review.md works
 #     "Personal team migration" for exact order-of-operations). If scripting
 #     is ever worth the unofficial-API risk:
 asc iris auth login --apple-id you@example.com --interactive   # one-time, 2FA, ~30-day session
-asc iris apps create --name "Lyklaborð" --bundle-id is.palsson.lyklabord \
+asc iris apps create --name "Lyklaborð" --bundle-id com.supermassiveapps.lyklabord \
   --sku lyklabord-ios --platforms IOS
 
 # --- 4. Subscription group + product + price + intro offer ---
 asc subscription-groups create --app-id <APP_ID> --reference-name "Lyklaborð+"
 asc subscriptions create --group-id <GROUP_ID> --name "Lyklaborð+ Annual" \
-  --product-id is.palsson.lyklabord.plus.annual --period ONE_YEAR
+  --product-id com.supermassiveapps.lyklabord.plus.annual --period ONE_YEAR
 asc subscriptions price-points list --subscription-id <SUB_ID> --territory USA
 asc subscriptions prices set --subscription-id <SUB_ID> --territory USA \
   --price-point-id <PP_ID_NEAREST_19_00>
@@ -285,9 +285,9 @@ asc subscription-offers create --subscription-id <SUB_ID> --territory USA \
 # --- 5. CloudKit production schema deploy ---
 xcrun cktool save-token --team-id 45BXWF6V3P   # one-time, paste Management Token
 xcrun cktool export-schema --team-id 45BXWF6V3P \
-  --container-id iCloud.is.palsson.lyklabord --environment development \
+  --container-id iCloud.com.supermassiveapps.lyklabord --environment development \
   --file /tmp/lyklabord-dev-schema.ckdb
 xcrun cktool import-schema --team-id 45BXWF6V3P \
-  --container-id iCloud.is.palsson.lyklabord --environment production \
+  --container-id iCloud.com.supermassiveapps.lyklabord --environment production \
   --file /tmp/lyklabord-dev-schema.ckdb
 ```

@@ -27,7 +27,7 @@ enum KeyboardStatus {
 
     /// Must match `PRODUCT_BUNDLE_IDENTIFIER` of the LyklabordKeyboard
     /// target in `project.yml`.
-    static let keyboardExtensionBundleId = "is.palsson.lyklabord.keyboard"
+    static let keyboardExtensionBundleId = "com.supermassiveapps.lyklabord.keyboard"
 
     /// Whether the Lyklaborð keyboard is currently enabled in
     /// Settings → General → Keyboard → Keyboards.

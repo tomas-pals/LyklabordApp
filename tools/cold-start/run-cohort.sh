@@ -4,8 +4,8 @@ set -euo pipefail
 
 DEVICE="${1:-}"
 RUN_COUNT="${2:-20}"
-GROUP_ID="group.is.palsson.lyklabord"
-HOST_BUNDLE_ID="is.palsson.lyklabord"
+GROUP_ID="group.com.supermassiveapps.lyklabord"
+HOST_BUNDLE_ID="com.supermassiveapps.lyklabord"
 HOST_EXECUTABLE="Lyklabord"
 EXTENSION_EXECUTABLE="LyklabordKeyboard"
 SOURCE="Documents/diagnostics/cold-start.jsonl"

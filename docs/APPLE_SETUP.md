@@ -1,8 +1,9 @@
 # Ship Lyklaborð on your Apple team
 
-Do this on **tommipals@gmail.com**, team **`45BXWF6V3P`**. Do not copy App IDs,
-API keys, TestFlight groups, bundle IDs, App Groups, or iCloud containers
-from Jökull’s account. The repo is already pointed at the identifiers below.
+Do this on **tommipals@gmail.com**, team **`45BXWF6V3P`**. Bundle IDs are the
+ones you already own (`com.supermassiveapps.lyklabord` + keyboard / group /
+iCloud / IAP). Do not copy Jökull’s ASC App ID, API keys, or TestFlight
+groups.
 
 You need: a paid Apple Developer Program membership, a Mac with **Xcode 26+**,
 and this git checkout.
@@ -17,12 +18,12 @@ change the repo to match.
 | What | Value | Where it lives |
 | --- | --- | --- |
 | Team | `45BXWF6V3P` | `project.yml`, `docs/TestFlightExportOptions.plist` |
-| App bundle ID | `is.palsson.lyklabord` | `project.yml` |
-| Keyboard bundle ID | `is.palsson.lyklabord.keyboard` | `project.yml` |
-| App Group | `group.is.palsson.lyklabord` | entitlements + `App/AppModel.swift` |
-| iCloud container | `iCloud.is.palsson.lyklabord` | entitlements + `SyncActivation` |
-| IAP product | `is.palsson.lyklabord.plus.annual` | `SubscriptionManager` + `.storekit` |
-| ReplayHost (local only) | `is.palsson.lyklabord.replayhost` | `project.yml` — do not ship |
+| App bundle ID | `com.supermassiveapps.lyklabord` | `project.yml` |
+| Keyboard bundle ID | `com.supermassiveapps.lyklabord.keyboard` | `project.yml` |
+| App Group | `group.com.supermassiveapps.lyklabord` | entitlements + `App/AppModel.swift` |
+| iCloud container | `iCloud.com.supermassiveapps.lyklabord` | entitlements + `SyncActivation` |
+| IAP product | `com.supermassiveapps.lyklabord.plus.annual` | `SubscriptionManager` + `.storekit` |
+| ReplayHost (local only) | `com.supermassiveapps.lyklabord.replayhost` | `project.yml` — do not ship |
 
 You mint later (write them down; they are **not** in git):
 
@@ -49,33 +50,38 @@ You mint later (write them down; they are **not** in git):
 
 [Certificates, Identifiers & Profiles → Identifiers](https://developer.apple.com/account/resources/identifiers/list)
 
+If `com.supermassiveapps.lyklabord` (and group / iCloud / keyboard) already
+exist on **this** team, skip Register — just confirm App Groups + iCloud +
+IAP are attached. If Register says another team owns an ID, transfer that
+App ID onto `45BXWF6V3P` (Apple: App Transfer / identifier transfer).
+
 ### 2a. App Group
 
 1. **+** → **App Groups** → Continue.
-2. Description: `Lyklaborð`. Identifier: `group.is.palsson.lyklabord`.
+2. Description: `Lyklaborð`. Identifier: `group.com.supermassiveapps.lyklabord`.
 3. Register.
 
 ### 2b. iCloud container
 
 1. **+** → **iCloud Containers** → Continue.
-2. Description: `Lyklaborð`. Identifier: `iCloud.is.palsson.lyklabord`.
+2. Description: `Lyklaborð`. Identifier: `iCloud.com.supermassiveapps.lyklabord`.
 3. Register.
 
 ### 2c. App ID (containing app)
 
 1. **+** → **App IDs** → App → Continue.
-2. Description: `Lyklaborð`. Bundle ID: **Explicit** `is.palsson.lyklabord`.
+2. Description: `Lyklaborð`. Bundle ID: **Explicit** `com.supermassiveapps.lyklabord`.
 3. Enable: **App Groups**, **iCloud** (include CloudKit + iCloud Documents), **In-App Purchase**, **Push Notifications** off.
 4. Register → Configure:
-   - App Groups → `group.is.palsson.lyklabord`
-   - iCloud → `iCloud.is.palsson.lyklabord`
+   - App Groups → `group.com.supermassiveapps.lyklabord`
+   - iCloud → `iCloud.com.supermassiveapps.lyklabord`
 
 ### 2d. App ID (keyboard)
 
 1. **+** → **App IDs** → App → Continue.
-2. Description: `Lyklaborð Keyboard`. Bundle ID: **Explicit** `is.palsson.lyklabord.keyboard`.
+2. Description: `Lyklaborð Keyboard`. Bundle ID: **Explicit** `com.supermassiveapps.lyklabord.keyboard`.
 3. Enable **App Groups** only. No iCloud, no IAP (extension stays offline).
-4. Register → App Groups → `group.is.palsson.lyklabord`.
+4. Register → App Groups → `group.com.supermassiveapps.lyklabord`.
 
 Automatic signing can create these on first archive if you skip 2a–2d. Doing them by hand avoids a mid-Cloud failure.
 
@@ -83,11 +89,17 @@ Automatic signing can create these on first archive if you skip 2a–2d. Doing t
 
 ## 3. Create the App Store Connect record
 
-1. [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → **Apps** → **+** → New App.
+1. [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → **Apps**.
+   If Lyklaborð already exists on this team with bundle
+   `com.supermassiveapps.lyklabord`, reuse it — copy its numeric Apple ID
+   (`APP_ID`) and skip New App. Otherwise **+** → New App.
 2. Platform **iOS**. Name **Lyklaborð** (if taken, `Lyklaborð IS` or similar — you can localize later).
-3. Primary language **English (US)**. Bundle ID **`is.palsson.lyklabord`**. SKU `lyklabord-ios`.
+3. Primary language **English (US)**. Bundle ID **`com.supermassiveapps.lyklabord`**. SKU `lyklabord-ios`.
 4. User Access: Full Access.
 5. Copy the numeric **Apple ID** from App Information (digits, not the bundle ID). That is `APP_ID`.
+6. If this bundle already has uploaded builds, set Xcode Cloud **Next Build
+   Number** (and `CURRENT_PROJECT_VERSION`) above the last one. Fresh record
+   stays at `1`.
 
 ### 3a. TestFlight groups
 
@@ -98,7 +110,7 @@ Automatic signing can create these on first archive if you skip 2a–2d. Doing t
 ### 3b. Lyklaborð+ (skip until you want IAP)
 
 1. **Subscriptions** → Subscription Group `Lyklaborð+`.
-2. Product ID **`is.palsson.lyklabord.plus.annual`**, 1 year, ~USD 19.99. Must match `SubscriptionManager.productID`.
+2. Product ID **`com.supermassiveapps.lyklabord.plus.annual`**, 1 year, ~USD 19.99. Must match `SubscriptionManager.productID`.
 
 ---
 
@@ -115,8 +127,8 @@ open Lyklabord.xcodeproj
 In Xcode:
 
 1. **Xcode → Settings → Accounts** → add **tommipals@gmail.com**. Team **45BXWF6V3P**.
-2. Target **Lyklabord** → Signing & Capabilities: Team **45BXWF6V3P**, bundle `is.palsson.lyklabord`.
-3. Target **LyklabordKeyboard**: same team, bundle `is.palsson.lyklabord.keyboard`.
+2. Target **Lyklabord** → Signing & Capabilities: Team **45BXWF6V3P**, bundle `com.supermassiveapps.lyklabord`.
+3. Target **LyklabordKeyboard**: same team, bundle `com.supermassiveapps.lyklabord.keyboard`.
 4. If signing errors, click **Try Again** (automatic signing writes provisioning profiles).
 
 You should **not** see team `RDC8539AWM`.
@@ -187,7 +199,7 @@ Headless command details: [`TESTFLIGHT.md`](TESTFLIGHT.md). Store listing copy: 
 
 - [ ] Signed into Apple as tommipals@gmail.com / `45BXWF6V3P`
 - [ ] App Group + iCloud container + both App IDs registered
-- [ ] New ASC app on bundle `is.palsson.lyklabord`; numeric `APP_ID` saved
+- [ ] New ASC app on bundle `com.supermassiveapps.lyklabord`; numeric `APP_ID` saved
 - [ ] Internal TestFlight group created
 - [ ] `xcodegen generate` + Xcode signing shows **your** team
 - [ ] Xcode Cloud workflow on **this** GitHub repo

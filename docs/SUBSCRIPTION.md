@@ -51,7 +51,7 @@ SubscriptionManager                       UserDefaults suite         LyklabordAu
 1. **Subscription group**: reference name `Lyklaborð+` (one group, one
    product).
 2. **Product**: auto-renewable subscription
-   - Product ID: `is.palsson.lyklabord.plus.annual`
+   - Product ID: `com.supermassiveapps.lyklabord.plus.annual`
      (must match `SubscriptionManager.productID` and
      `App/Subscription/Lyklabord.storekit`)
    - Duration: 1 year

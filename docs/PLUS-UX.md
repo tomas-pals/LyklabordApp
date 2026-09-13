@@ -18,7 +18,7 @@ precedent — see `docs/PLUS-UX-research.md` for the per-app breakdowns and cita
 1. The base keyboard is **free forever**: the full Icelandic + English engine, autocorrect,
    completions, inflection awareness. The free tier never degrades and is never nagged
    mid-typing.
-2. **Lyklaborð+** is one product: `is.palsson.lyklabord.plus.annual`, **$19/year**, unlocking
+2. **Lyklaborð+** is one product: `com.supermassiveapps.lyklabord.plus.annual`, **$19/year**, unlocking
    the *personal layer* — personal vocabulary (learned words, dictionary editor, SwiftKey
    import), coordinate adjustment (per-key touch adaptation), and iCloud sync of the
    personal model.
@@ -372,7 +372,7 @@ I don't like accuracy" is the banned pattern).
 ### 6.1 Trial length: 14 days (decision)
 
 Pinned range was 2–4 weeks; this document fixes **14 days**, configured as a StoreKit
-introductory offer (free trial) on `is.palsson.lyklabord.plus.annual`.
+introductory offer (free trial) on `com.supermassiveapps.lyklabord.plus.annual`.
 
 Reasoning (details + citations in research appendix §A5):
 

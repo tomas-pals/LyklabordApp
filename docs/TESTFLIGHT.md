@@ -19,8 +19,8 @@ record, API key, or TestFlight groups.
 | --- | --- |
 | Account | tommipals@gmail.com |
 | Team ID | `45BXWF6V3P` |
-| Bundle ID | `is.palsson.lyklabord` |
-| Keyboard | `is.palsson.lyklabord.keyboard` |
+| Bundle ID | `com.supermassiveapps.lyklabord` |
+| Keyboard | `com.supermassiveapps.lyklabord.keyboard` |
 | App ID | create the ASC record, then set `APP_ID` |
 | API key | Users and Access → Integrations → mint a `.p8`; set `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_PATH` |
 | TestFlight groups | create Internal (and optional External); set `INTERNAL_GROUP_ID` / `EXTERNAL_GROUP_ID` |

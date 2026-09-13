@@ -28,7 +28,7 @@ import Foundation
 final class EmojiFrequencyStore {
 
     static let shared = EmojiFrequencyStore(
-        defaults: UserDefaults(suiteName: "group.is.palsson.lyklabord") ?? .standard
+        defaults: UserDefaults(suiteName: "group.com.supermassiveapps.lyklabord") ?? .standard
     )
 
     private let defaults: UserDefaults

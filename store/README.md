@@ -6,12 +6,13 @@ Binary/TestFlight releases use the reproducible API-key flow in
 not represented by this asset directory.
 
 This fork ships on **Tómas Pálsson's** team (`45BXWF6V3P`,
-tommipals@gmail.com) with identifiers `is.palsson.lyklabord` (+ `.keyboard`,
+tommipals@gmail.com) with identifiers `com.supermassiveapps.lyklabord` (+ `.keyboard`,
 App Group, iCloud). First-time portal + Xcode Cloud steps:
 [`docs/APPLE_SETUP.md`](../docs/APPLE_SETUP.md).
 
-Historical note: upstream used other teams and bundle IDs. This fork does
-not reuse those. Create a new ASC record — [`docs/APPLE_SETUP.md`](../docs/APPLE_SETUP.md).
+Reuse the existing ASC record if this bundle already lives on team
+`45BXWF6V3P`. Otherwise create one — [`docs/APPLE_SETUP.md`](../docs/APPLE_SETUP.md).
+Do not reuse Jökull’s numeric App ID, API key, or TestFlight groups.
 
 Commercial model: base keyboard **free forever** (layout, autocorrect,
 prediction, blend). **"Lyklaborð+"** is a $19/year auto-renewable
@@ -135,11 +136,11 @@ before you start deleting anything.
    (`45BXWF6V3P`):
    - Register identifiers first in Certificates, Identifiers & Profiles (or
      let Xcode automatic signing do it on first archive with the personal
-     team selected): app bundle `is.palsson.lyklabord`, keyboard extension
-     `is.palsson.lyklabord.keyboard`, App Group `group.is.palsson.lyklabord`,
-     iCloud container `iCloud.is.palsson.lyklabord`.
+     team selected): app bundle `com.supermassiveapps.lyklabord`, keyboard extension
+     `com.supermassiveapps.lyklabord.keyboard`, App Group `group.com.supermassiveapps.lyklabord`,
+     iCloud container `iCloud.com.supermassiveapps.lyklabord`.
    - New app record: Platform iOS, Name "Lyklaborð", **primary language =
-     English (U.S.)** (see A.1), bundle ID `is.palsson.lyklabord`, SKU (e.g.
+     English (U.S.)** (see A.1), bundle ID `com.supermassiveapps.lyklabord`, SKU (e.g.
      `lyklabord-ios`), category **Utilities** (secondary Productivity).
 4. Paste metadata from `metadata/en.md` into the en-US localization only.
 5. Enter the App Privacy questionnaire as **Data Not Collected** per
@@ -162,7 +163,7 @@ Requires the base app record to exist first (above).
       "Lyklaborð+"), localized display name in en-US only (A.1 applies here
       too — no `is` locale for subscription metadata either).
 - [ ] **Create one auto-renewable subscription**: product ID e.g.
-      `is.palsson.lyklabord.plus.annual`, duration **1 year**, price point
+      `com.supermassiveapps.lyklabord.plus.annual`, duration **1 year**, price point
       the nearest tier to **$19.00 USD** (Apple auto-generates the other
       territory price points from the tier — no need to hand-set every
       country). Subscription display name + description (en-US). Optional
@@ -217,7 +218,7 @@ _The app-store-screenshots skill's Workflow 9 automates this. Requirements:_
       sync lands, + claim the standard exemption in ASC. **Blocks TestFlight
       builds if unanswered.** (roadmap §1)
 - [ ] **Production CloudKit schema deploy:** the container is
-      `iCloud.is.palsson.lyklabord` — brand-new under the personal team (any
+      `iCloud.com.supermassiveapps.lyklabord` — brand-new under the personal team (any
       schema that existed under the old team's container is irrelevant; this
       is a from-scratch deploy). Promote Development → Production in the
       CloudKit Console (or `cktool`) under the **personal team's** CloudKit

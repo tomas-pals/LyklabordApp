@@ -46,7 +46,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "is.palsson.lyklabord.plus.annual",
+          "productID" : "com.supermassiveapps.lyklabord.plus.annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Lyklaborð+ Annual",
           "subscriptionGroupID" : "8A2F1C64-0D7B-4E93-B5A8-6F0C9D3E2A17",
